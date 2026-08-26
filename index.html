@@ -88,7 +88,8 @@
     .section-label span { width:6px; height:6px; border-radius:50%; background: var(--accent); box-shadow:0 0 8px var(--accent); }
 
     /* Shape cards */
-    .shape-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; }
+    .shape-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap:8px; }
+    @media (max-width: 768px) { .shape-grid { grid-template-columns: repeat(4, 1fr); } }
     .shape-card {
       position: relative; padding: 14px 8px 10px; border-radius: 14px;
       background: rgba(255,255,255,0.06); border:1px solid transparent;
@@ -222,9 +223,14 @@
       <div class="section">
         <div class="section-label"><span></span> Shape</div>
         <div class="shape-grid">
-          <div class="shape-card active" data-model="tree"><div class="icon">🎄</div><div class="name">Tree</div><div class="count">35k pts</div></div>
-          <div class="shape-card" data-model="saturn"><div class="icon">🪐</div><div class="name">Saturn</div><div class="count">35k pts</div></div>
-          <div class="shape-card" data-model="heart"><div class="icon">♥</div><div class="name">Heart</div><div class="count">35k pts</div></div>
+          <div class="shape-card active" data-model="tree"><div class="icon">🎄</div><div class="name">Tree</div><div class="count">35k</div></div>
+          <div class="shape-card" data-model="saturn"><div class="icon">🪐</div><div class="name">Saturn</div><div class="count">35k</div></div>
+          <div class="shape-card" data-model="heart"><div class="icon">♥</div><div class="name">Heart</div><div class="count">35k</div></div>
+          <div class="shape-card" data-model="sphere"><div class="icon">●</div><div class="name">Sphere</div><div class="count">35k</div></div>
+          <div class="shape-card" data-model="cube"><div class="icon">⬢</div><div class="name">Cube</div><div class="count">35k</div></div>
+          <div class="shape-card" data-model="torus"><div class="icon">◎</div><div class="name">Torus</div><div class="count">35k</div></div>
+          <div class="shape-card" data-model="galaxy"><div class="icon">🌀</div><div class="name">Galaxy</div><div class="count">35k</div></div>
+          <div class="shape-card" data-model="dna"><div class="icon">🧬</div><div class="name">DNA</div><div class="count">35k</div></div>
         </div>
       </div>
 
@@ -307,7 +313,12 @@ const PARTICLE_COUNT = 35000;
 const targetPositions = {
   heart: new Float32Array(PARTICLE_COUNT * 3),
   saturn: new Float32Array(PARTICLE_COUNT * 3),
-  tree: new Float32Array(PARTICLE_COUNT * 3)
+  tree: new Float32Array(PARTICLE_COUNT * 3),
+  sphere: new Float32Array(PARTICLE_COUNT * 3),
+  cube: new Float32Array(PARTICLE_COUNT * 3),
+  torus: new Float32Array(PARTICLE_COUNT * 3),
+  galaxy: new Float32Array(PARTICLE_COUNT * 3),
+  dna: new Float32Array(PARTICLE_COUNT * 3)
 };
 let currentModel = "tree";
 let gestureScale = 1.0, targetGestureScale = 1.0, targetRotationX = 0, targetRotationY = 0;
@@ -394,6 +405,81 @@ function generateModelPositions() {
     }
     const t=Math.PI*2*Math.random(), u=Math.PI*(Math.random()-0.5), x=16*Math.pow(Math.sin(t),3), y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t), z=6*Math.sin(u)*(1-Math.abs(Math.sin(t)));
     targetPositions.heart[i3]=x*1.35; targetPositions.heart[i3+1]=y*1.35; targetPositions.heart[i3+2]=z*1.35;
+
+    // Sphere — uniform volume sphere r~13
+    {
+      const theta=Math.random()*Math.PI*2, phi=Math.acos(2*Math.random()-1), r=13 * Math.cbrt(Math.random());
+      targetPositions.sphere[i3]=r*Math.sin(phi)*Math.cos(theta);
+      targetPositions.sphere[i3+1]=r*Math.sin(phi)*Math.sin(theta);
+      targetPositions.sphere[i3+2]=r*Math.cos(phi);
+    }
+    // Cube — 70% surface, 30% volume, size 22
+    {
+      const size=22;
+      if (Math.random() < 0.7) {
+        const face=Math.floor(Math.random()*6);
+        const a=(Math.random()-0.5)*size, b=(Math.random()-0.5)*size;
+        let x,y,z;
+        if(face===0){ x=size/2; y=a; z=b; }
+        else if(face===1){ x=-size/2; y=a; z=b; }
+        else if(face===2){ y=size/2; x=a; z=b; }
+        else if(face===3){ y=-size/2; x=a; z=b; }
+        else if(face===4){ z=size/2; x=a; y=b; }
+        else { z=-size/2; x=a; y=b; }
+        // slight jitter for organic look
+        x+=(Math.random()-0.5)*1.2; y+=(Math.random()-0.5)*1.2; z+=(Math.random()-0.5)*1.2;
+        targetPositions.cube[i3]=x; targetPositions.cube[i3+1]=y; targetPositions.cube[i3+2]=z;
+      } else {
+        targetPositions.cube[i3]=(Math.random()-0.5)*size;
+        targetPositions.cube[i3+1]=(Math.random()-0.5)*size;
+        targetPositions.cube[i3+2]=(Math.random()-0.5)*size;
+      }
+    }
+    // Torus — R 12, tube 4.2
+    {
+      const R=12, r=4.2;
+      const theta=Math.random()*Math.PI*2, phi=Math.random()*Math.PI*2;
+      const tubeR = r + (Math.random()-0.5)*0.8;
+      const dist = R + tubeR*Math.cos(phi);
+      targetPositions.torus[i3]=dist*Math.cos(theta);
+      targetPositions.torus[i3+1]=tubeR*Math.sin(phi);
+      targetPositions.torus[i3+2]=dist*Math.sin(theta);
+    }
+    // Galaxy — 2-arm logarithmic spiral
+    {
+      const arm = Math.random() < 0.5 ? 0 : 1;
+      const radius = 2 + Math.random()*15;
+      const spin = radius * 0.52;
+      const armAngle = arm * Math.PI;
+      const theta = spin + armAngle + (Math.random()-0.5)*0.9;
+      const spread = (Math.random()-0.5)* (2.2 + radius*0.12) * Math.exp(-radius*0.04);
+      targetPositions.galaxy[i3]=Math.cos(theta)*radius + (Math.random()-0.5)*1.2;
+      targetPositions.galaxy[i3+1]=spread;
+      targetPositions.galaxy[i3+2]=Math.sin(theta)*radius + (Math.random()-0.5)*1.2;
+    }
+    // DNA — double helix, height 32, radius 6
+    {
+      const strand = Math.random() < 0.5 ? 0 : 1;
+      const bridge = Math.random() < 0.12; // 12% bridge particles between strands
+      const y = (Math.random()-0.5)*32;
+      const t = y * 0.45;
+      const angle = t + strand*Math.PI;
+      let x = Math.cos(angle)*6;
+      let z = Math.sin(angle)*6;
+      if (bridge) {
+        const mix = Math.random();
+        const a2 = t + (1-strand)*Math.PI;
+        const x2 = Math.cos(a2)*6, z2 = Math.sin(a2)*6;
+        x = x*(1-mix) + x2*mix;
+        z = z*(1-mix) + z2*mix;
+      } else {
+        x += (Math.random()-0.5)*0.9;
+        z += (Math.random()-0.5)*0.9;
+      }
+      targetPositions.dna[i3]=x;
+      targetPositions.dna[i3+1]=y;
+      targetPositions.dna[i3+2]=z;
+    }
   }
 }
 

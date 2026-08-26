@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lumina — 3D Particle Playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #00ffcc;
+      --accent-2: #7c5cff;
+      --bg: #070709;
+      --panel: rgba(18,18,20,0.72);
+      --panel-border: rgba(255,255,255,0.08);
+      --text: #f5f5f7;
+      --muted: #a1a1aa;
+      --radius: 20px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; overflow: hidden; background: var(--bg);
+      font-family: 'Inter', -apple-system, sans-serif; color: var(--text);
+      -webkit-font-smoothing: antialiased;
+    }
+    /* gradient backdrop */
+    body::before {
+      content:""; position: fixed; inset:0; z-index:0;
+      background:
+        radial-gradient(800px 600px at 20% 10%, rgba(124,92,255,0.18), transparent 60%),
+        radial-gradient(700px 500px at 85% 85%, rgba(0,255,204,0.14), transparent 60%),
+        radial-gradient(600px 600px at 50% 50%, rgba(255,255,255,0.03), transparent 70%);
+      pointer-events: none;
+    }
+    #canvas-container { position: absolute; inset:0; z-index: 1; }
+
+    /* Header */
+    .header {
+      position: absolute; top:0; left:0; right:0; z-index: 20;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px; pointer-events: none;
+    }
+    .brand {
+      display: flex; align-items: center; gap:12px; pointer-events: auto;
+    }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: grid; place-items: center; font-weight: 700; font-size: 16px; color:#000;
+      box-shadow: 0 4px 20px rgba(0,255,204,0.3);
+    }
+    .brand-text h1 { margin:0; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+    .brand-text p { margin:2px 0 0; font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+    .header-actions { display: flex; gap:8px; pointer-events: auto; }
+    .icon-btn {
+      width: 38px; height: 38px; border-radius: 12px; border:1px solid var(--panel-border);
+      background: var(--panel); backdrop-filter: blur(16px); color: white;
+      display: grid; place-items: center; cursor: pointer; font-size: 15px;
+      transition: all .2s;
+    }
+    .icon-btn:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-1px); background: rgba(28,28,30,0.9); }
+    .icon-btn.active { border-color: var(--accent); color: var(--accent); }
+
+    /* Left Panel */
+    .panel {
+      position: absolute; top: 72px; left: 20px; z-index: 10;
+      width: 340px; max-height: calc(100vh - 88px);
+      background: var(--panel); backdrop-filter: blur(24px) saturate(1.4);
+      border:1px solid var(--panel-border); border-radius: var(--radius);
+      box-shadow: 0 16px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel-scroll { overflow-y: auto; padding: 20px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+    .panel-scroll::-webkit-scrollbar { width: 4px; }
+    .panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .panel-header h2 { margin:0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .collapse-btn { width:28px; height:28px; border-radius:8px; border:1px solid var(--panel-border); background: rgba(255,255,255,0.06); color: var(--muted); cursor:pointer; display:grid; place-items:center; }
+    .panel.collapsed { width: 52px; height: 52px; border-radius: 16px; }
+    .panel.collapsed .panel-scroll, .panel.collapsed .panel-header h2 { display:none; }
+    .section { margin-bottom: 22px; }
+    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; display:flex; align-items:center; gap:8px; }
+    .section-label span { width:6px; height:6px; border-radius:50%; background: var(--accent); box-shadow:0 0 8px var(--accent); }
+
+    /* Shape cards */
+    .shape-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap:8px; }
+    .shape-card {
+      position: relative; padding: 14px 8px 10px; border-radius: 14px;
+      background: rgba(255,255,255,0.06); border:1px solid transparent;
+      cursor: pointer; text-align: center; transition: all .2s;
+    }
+    .shape-card:hover { background: rgba(255,255,255,0.09); transform: translateY(-1px); }
+    .shape-card.active { background: linear-gradient(135deg, rgba(0,255,204,0.15), rgba(124,92,255,0.15)); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,204,0.12); }
+    .shape-card .icon { font-size: 22px; margin-bottom: 6px; }
+    .shape-card .name { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
+    .shape-card .count { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+    /* Color */
+    .color-row { display:flex; align-items:center; gap:12px; }
+    .palette { display:flex; gap:8px; flex-wrap: wrap; }
+    .swatch { width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:.2s; position:relative; }
+    .swatch.active { border-color:white; box-shadow: 0 0 0 3px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.3); transform: scale(1.08); }
+    .swatch.active::after { content:"✓"; position:absolute; inset:0; display:grid; place-items:center; font-size:12px; color:white; text-shadow:0 1px 4px rgba(0,0,0,0.8); }
+    .color-custom { display:flex; align-items:center; gap:10px; margin-top:10px; padding:10px; border-radius:12px; background: rgba(255,255,255,0.05); border:1px solid var(--panel-border); }
+    input[type="color"] { -webkit-appearance:none; border:none; width:36px; height:36px; border-radius:50%; cursor:pointer; background:none; padding:0; }
+    input[type="color"]::-webkit-color-swatch { border:2px solid rgba(255,255,255,0.5); border-radius:50%; }
+    #color-hex { font-family: 'JetBrains Mono', monospace; font-size:13px; color: var(--text); }
+    .slider-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .slider-row span { font-size:11px; color:var(--muted); }
+    .slider-row strong { font-size:12px; font-family:'JetBrains Mono',monospace; color: var(--accent); }
+    input[type="range"] { width:100%; accent-color: var(--accent); height:4px; }
+
+    /* Status */
+    .status-card {
+      border-radius: 16px; padding:14px; background: rgba(255,255,255,0.05);
+      border:1px solid var(--panel-border); position:relative; overflow:hidden;
+    }
+    .status-card::before { content:""; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); opacity:0.8; }
+    .status-card.active { background: rgba(0,255,204,0.08); border-color: rgba(0,255,204,0.25); }
+    .status-card.active::before { opacity:1; }
+    .hand-dots { display:flex; gap:8px; margin-bottom:10px; }
+    .dot { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; padding:6px 10px; border-radius:20px; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.06); }
+    .dot i { width:8px; height:8px; border-radius:50%; background: #555; }
+    .dot.on i { background: var(--accent); box-shadow:0 0 8px var(--accent); }
+    .dot.fist i { background: #ff8a00; box-shadow:0 0 8px #ff8a00; }
+    .meter { height:6px; background: rgba(255,255,255,0.08); border-radius: 10px; overflow:hidden; margin-top:8px; }
+    .meter-fill { height:100%; width:50%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius:10px; transition: width .15s; }
+    .status-text { font-size:12px; line-height:1.5; color: #d4d4d8; min-height: 32px; }
+    .status-text strong { color: var(--accent); }
+
+    /* Webcam */
+    .webcam-wrap {
+      position: absolute; bottom: 20px; right: 20px; z-index: 10;
+      width: 260px; border-radius: 18px; overflow: hidden;
+      background: #000; border:1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6); backdrop-filter: blur(12px);
+    }
+    .webcam-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 12px; background: rgba(18,18,20,0.9); border-bottom:1px solid rgba(255,255,255,0.06);
+      font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);
+    }
+    .live-dot { width:8px; height:8px; border-radius:50%; background:#ff3b30; box-shadow:0 0 8px #ff3b30; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+    #webcam { width:100%; height:180px; object-fit:cover; transform: scaleX(-1); display:block; background:#000; }
+    #overlay { position:absolute; top:35px; left:0; width:100%; height:180px; pointer-events:none; transform: scaleX(-1); }
+    .webcam-footer {
+      display:flex; gap:6px; padding:8px; background: rgba(18,18,20,0.9);
+      font-size:11px; color: var(--muted); align-items:center; justify-content:space-between;
+    }
+
+    /* Bottom hint */
+    .hint-bar {
+      position: absolute; bottom: 20px; left:50%; transform:translateX(-50%); z-index:10;
+      display:flex; gap:8px; padding:8px; border-radius: 16px;
+      background: rgba(18,18,20,0.75); backdrop-filter: blur(16px);
+      border:1px solid var(--panel-border); box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      font-size:11px; color: var(--muted); white-space: nowrap;
+    }
+    .hint { display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:10px; background: rgba(255,255,255,0.06); }
+    .hint kbd { font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 6px; border-radius:6px; background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.1); color: var(--text); }
+
+    /* Loading */
+    #loading {
+      position: absolute; inset:0; z-index: 50; display:grid; place-items:center;
+      background: radial-gradient(600px 400px at 50% 50%, rgba(124,92,255,0.15), transparent 70%), rgba(7,7,9,0.88);
+      backdrop-filter: blur(8px); transition: opacity .5s;
+    }
+    .loading-card {
+      text-align:center; padding:32px; border-radius:20px; background: var(--panel);
+      border:1px solid var(--panel-border); box-shadow: 0 16px 64px rgba(0,0,0,0.5);
+    }
+    .spinner {
+      width:44px; height:44px; border:3px solid rgba(255,255,255,0.1);
+      border-top-color: var(--accent); border-radius:50%; margin:0 auto 16px; animation: spin 0.9s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-card h3 { margin:0 0 6px; font-size:15px; font-weight:600; }
+    .loading-card p { margin:0; font-size:12px; color:var(--muted); }
+
+    @media (max-width: 768px) {
+      .panel { width: calc(100vw - 24px); left:12px; top:64px; max-height: 46vh; }
+      .webcam-wrap { width: 150px; bottom: 70px; right:12px; }
+      #webcam, #overlay { height:110px; }
+      .hint-bar { bottom:12px; font-size:10px; padding:6px; gap:6px; }
+      .hint { padding:4px 8px; }
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="loading"><div class="loading-card"><div class="spinner"></div><h3>Preparing Lumina</h3><p>Warming up particles & camera…</p></div></div>
+  <div id="canvas-container"></div>
+
+  <header class="header">
+    <div class="brand">
+      <div class="brand-mark">◈</div>
+      <div class="brand-text"><h1>Lumina</h1><p>Particle Playground • Dual Hand</p></div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btn-camera" title="Toggle camera">◉</button>
+      <button class="icon-btn" id="btn-help" title="Toggle help">?</button>
+      <button class="icon-btn" id="btn-fullscreen" title="Fullscreen">⛶</button>
+    </div>
+  </header>
+
+  <div class="panel" id="panel">
+    <div class="panel-scroll">
+      <div class="panel-header">
+        <h2>Controls</h2>
+        <button class="collapse-btn" id="btn-collapse" title="Collapse">—</button>
+      </div>
+
+      <div class="section">
+        <div class="section-label"><span></span> Shape</div>
+        <div class="shape-grid">
+          <div class="shape-card active" data-model="tree"><div class="icon">🎄</div><div class="name">Tree</div><div class="count">35k pts</div></div>
+          <div class="shape-card" data-model="saturn"><div class="icon">🪐</div><div class="name">Saturn</div><div class="count">35k pts</div></div>
+          <div class="shape-card" data-model="heart"><div class="icon">♥</div><div class="name">Heart</div><div class="count">35k pts</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label"><span></span> Appearance</div>
+        <div class="color-row" style="margin-bottom:10px">
+          <div class="palette" id="palette">
+            <div class="swatch active" data-color="#00ffcc" style="background:#00ffcc"></div>
+            <div class="swatch" data-color="#7c5cff" style="background:#7c5cff"></div>
+            <div class="swatch" data-color="#ff3b82" style="background:#ff3b82"></div>
+            <div class="swatch" data-color="#ffcc00" style="background:#ffcc00"></div>
+            <div class="swatch" data-color="#38bdf8" style="background:#38bdf8"></div>
+            <div class="swatch" data-color="#ffffff" style="background:#ffffff"></div>
+          </div>
+        </div>
+        <div class="color-custom">
+          <input type="color" id="particle-color" value="#00ffcc" />
+          <span id="color-hex">#00ffcc</span>
+          <span style="margin-left:auto; font-size:11px; color:var(--muted)">Custom</span>
+        </div>
+        <div style="margin-top:14px">
+          <div class="slider-row"><span>Particle size</span><strong id="size-val">0.34</strong></div>
+          <input type="range" id="size-slider" min="0.12" max="0.9" step="0.02" value="0.34" />
+          <div class="slider-row" style="margin-top:10px"><span>Motion speed</span><strong id="speed-val">0.08</strong></div>
+          <input type="range" id="speed-slider" min="0.02" max="0.18" step="0.01" value="0.08" />
+          <div class="slider-row" style="margin-top:10px"><span>Hand smoothing</span><strong id="smooth-val">High</strong></div>
+          <input type="range" id="smooth-slider" min="0" max="2" step="1" value="2" />
+          <div style="font-size:10px; color:var(--muted); margin-top:4px; display:flex; justify-content:space-between"><span>Off</span><span>Med</span><span>High</span></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label"><span></span> Hands & Motion</div>
+        <div class="status-card" id="gesture-status">
+          <div class="hand-dots" id="hand-dots">
+            <div class="dot" id="dot-0"><i></i> Hand 1 — idle</div>
+            <div class="dot" id="dot-1"><i></i> Hand 2 — idle</div>
+          </div>
+          <div class="status-text" id="status-text">Waiting for camera permission…<br><span style="color:var(--muted)">Show one or two hands to begin.</span></div>
+          <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:6px; font-family:'JetBrains Mono',monospace"><span>SMALL</span><span id="scale-label">1.00×</span><span>LARGE</span></div>
+        </div>
+        <div style="display:flex; gap:8px; margin-top:10px">
+          <button class="icon-btn" style="flex:1; width:auto; height:36px; border-radius:12px; font-size:12px; font-weight:600" id="btn-reset">↺ Reset view</button>
+          <button class="icon-btn" style="flex:1; width:auto; height:36px; border-radius:12px; font-size:12px; font-weight:600" id="btn-auto">Auto spin</button>
+        </div>
+      </div>
+
+      <div class="section" id="help-section">
+        <div class="section-label"><span></span> How to interact</div>
+        <div style="font-size:12px; line-height:1.6; color:#d4d4d8; background:rgba(255,255,255,0.04); border:1px solid var(--panel-border); border-radius:12px; padding:12px">
+          <strong style="color:var(--accent)">1 hand:</strong> Move to rotate • Make a <b>fist</b> and push/pull to zoom<br>
+          <strong style="color:var(--accent-2)">2 hands:</strong> Rotate from midpoint • Spread / pinch to zoom<br>
+          <strong>Mouse:</strong> Drag to orbit • Scroll to zoom • Right-drag to pan
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="webcam-wrap" id="webcam-wrap">
+    <div class="webcam-header"><span style="display:flex; align-items:center; gap:8px"><span class="live-dot"></span> Camera</span><span id="cam-status" style="font-size:10px; color:var(--muted)">Starting…</span></div>
+    <div style="position:relative">
+      <video id="webcam" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
+    <div class="webcam-footer"><span id="fps">— fps</span><span style="opacity:0.6">Mirrored</span></div>
+  </div>
+
+  <div class="hint-bar" id="hint-bar">
+    <div class="hint"><kbd>F</kbd> Fullscreen</div>
+    <div class="hint"><kbd>H</kbd> Hide panel</div>
+    <div class="hint"><kbd>C</kbd> Camera</div>
+    <div class="hint"> <span style="color:var(--accent)">◈</span> Fist = zoom (1 hand) • Spread = zoom (2 hands)</div>
+  </div>
+
+<script>
+let scene, camera, renderer, controls;
+let particleGeometry, particleSystem;
+const PARTICLE_COUNT = 35000;
+const targetPositions = {
+  heart: new Float32Array(PARTICLE_COUNT * 3),
+  saturn: new Float32Array(PARTICLE_COUNT * 3),
+  tree: new Float32Array(PARTICLE_COUNT * 3)
+};
+let currentModel = "tree";
+let gestureScale = 1.0, targetGestureScale = 1.0, targetRotationX = 0, targetRotationY = 0;
+let morphSpeed = 0.08, autoSpin = false, cameraEnabled = true;
+const BASE_MODEL_SCALE = 1.75;
+const MIN_GESTURE_SCALE = 0.1, MAX_GESTURE_SCALE = 2.4;
+const PALM_SIZE_MIN = 0.11, PALM_SIZE_MAX = 0.28, PALM_SIZE_SCALE_ONE = 0.1547368421;
+const TWO_HAND_DIST_MIN = 0.12, TWO_HAND_DIST_MAX = 0.65, TWO_HAND_SCALE_MIN = 0.4, TWO_HAND_SCALE_MAX = 2.4;
+// Smoothing state — fixes jank
+let smoothRotX = 0, smoothRotY = 0, smoothScale = 1.0;
+let rotEmaX = 0, rotEmaY = 0, scaleEma = 1.0, palmEma = null, interDistEma = null;
+let fistHistory = [], missingFrames = 0, lastHandTime = 0;
+let landmarkHistory = []; // last 4 frames for landmark averaging
+let smoothingEnabled = true;
+let ROT_LERP = 0.14, SCALE_LERP = 0.10, ROT_DEADZONE = 0.025, SCALE_DEADZONE = 0.02, MAX_SCALE_STEP = 0.06;
+function applySmoothingPreset(level){
+  // 0=off (raw), 1=medium, 2=high
+  if(level===0){ smoothingEnabled=false; ROT_LERP=0.35; SCALE_LERP=0.30; ROT_DEADZONE=0; SCALE_DEADZONE=0; MAX_SCALE_STEP=0.20; }
+  else if(level===1){ smoothingEnabled=true; ROT_LERP=0.18; SCALE_LERP=0.14; ROT_DEADZONE=0.015; SCALE_DEADZONE=0.01; MAX_SCALE_STEP=0.09; }
+  else { smoothingEnabled=true; ROT_LERP=0.14; SCALE_LERP=0.10; ROT_DEADZONE=0.025; SCALE_DEADZONE=0.02; MAX_SCALE_STEP=0.06; }
+}
+
+function mapPalmSizeToScale(p) {
+  if (p <= PALM_SIZE_SCALE_ONE) return THREE.MathUtils.mapLinear(p, PALM_SIZE_MIN, PALM_SIZE_SCALE_ONE, MIN_GESTURE_SCALE, 1.0);
+  return THREE.MathUtils.mapLinear(p, PALM_SIZE_SCALE_ONE, PALM_SIZE_MAX, 1.0, MAX_GESTURE_SCALE);
+}
+function mapTwoHandDistanceToScale(d) { return THREE.MathUtils.mapLinear(d, TWO_HAND_DIST_MIN, TWO_HAND_DIST_MAX, TWO_HAND_SCALE_MIN, TWO_HAND_SCALE_MAX); }
+function ema(prev, curr, alpha) { return prev + (curr - prev) * alpha; }
+function applyDeadzone(delta, dz) { return Math.abs(delta) < dz ? 0 : delta; }
+function smoothLandmarks(landmarks) {
+  if (!smoothingEnabled) return landmarks;
+  // Keep last 3 frames, average each joint — removes high-freq jitter without lag
+  landmarkHistory.push(landmarks.map(h => h.map(p => ({x:p.x, y:p.y, z:p.z}))));
+  if (landmarkHistory.length > 3) landmarkHistory.shift();
+  if (landmarkHistory.length < 2) return landmarks;
+  return landmarks.map((hand, hi) => hand.map((p, pi) => {
+    let sx=0, sy=0, sz=0, cnt=0;
+    for (const frame of landmarkHistory) { if (frame[hi] && frame[hi][pi]) { sx+=frame[hi][pi].x; sy+=frame[hi][pi].y; sz+=frame[hi][pi].z; cnt++; } }
+    return { x: sx/cnt, y: sy/cnt, z: sz/cnt };
+  }));
+}
+
+function analyzeHand(hand) {
+  const wrist = hand[0], thumbTip = hand[4], thumbIP = hand[3], indexPip = hand[6], indexTip = hand[8], middlePip = hand[10], middleTip = hand[12], ringPip = hand[14], ringTip = hand[16], pinkyPip = hand[18], pinkyTip = hand[20], middleBase = hand[9];
+  const palmSize = Math.hypot(wrist.x - middleBase.x, wrist.y - middleBase.y) || 0.08;
+  const palmCenterX = (wrist.x + middleBase.x) * 0.5, palmCenterY = (wrist.y + middleBase.y) * 0.5;
+  const fingertipSpread = (Math.hypot(thumbTip.x - palmCenterX, thumbTip.y - palmCenterY) + Math.hypot(indexTip.x - palmCenterX, indexTip.y - palmCenterY) + Math.hypot(middleTip.x - palmCenterX, middleTip.y - palmCenterY) + Math.hypot(ringTip.x - palmCenterX, ringTip.y - palmCenterY) + Math.hypot(pinkyTip.x - palmCenterX, pinkyTip.y - palmCenterY)) / 5;
+  const openness = fingertipSpread / palmSize;
+  const thumbCurled = Math.hypot(thumbTip.x - palmCenterX, thumbTip.y - palmCenterY) < Math.hypot(thumbIP.x - palmCenterX, thumbIP.y - palmCenterY) * 1.1;
+  const indexCurled = Math.hypot(indexTip.x - wrist.x, indexTip.y - wrist.y) < Math.hypot(indexPip.x - wrist.x, indexPip.y - wrist.y) * 1.08;
+  const middleCurled = Math.hypot(middleTip.x - wrist.x, middleTip.y - wrist.y) < Math.hypot(middlePip.x - wrist.x, middlePip.y - wrist.y) * 1.08;
+  const ringCurled = Math.hypot(ringTip.x - wrist.x, ringTip.y - wrist.y) < Math.hypot(ringPip.x - wrist.x, ringPip.y - wrist.y) * 1.08;
+  const pinkyCurled = Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y) < Math.hypot(pinkyPip.x - wrist.x, pinkyPip.y - wrist.y) * 1.12;
+  const curledCount = [indexCurled, middleCurled, ringCurled, pinkyCurled].filter(Boolean).length;
+  const isFist = openness < 1.72 && thumbCurled && curledCount >= 3;
+  const handCenterX = (wrist.x + middleBase.x + hand[5].x + hand[17].x) * 0.25;
+  const handCenterY = (wrist.y + middleBase.y + hand[5].y + hand[17].y) * 0.25;
+  return { palmSize, palmCenterX, palmCenterY, handCenterX, handCenterY, isFist, openness };
+}
+
+function generateModelPositions() {
+  for (let i=0;i<PARTICLE_COUNT;i++) {
+    const i3=i*3;
+    if (i < PARTICLE_COUNT * 0.08) {
+      const angle=Math.random()*Math.PI*2, starWave=Math.abs(Math.sin(angle*5)), r=(1.8+starWave*3.0)*Math.sqrt(Math.random());
+      targetPositions.tree[i3]=r*Math.cos(angle); targetPositions.tree[i3+1]=20+(Math.random()-0.5)*1.5; targetPositions.tree[i3+2]=r*Math.sin(angle)*0.45;
+    } else if (i < PARTICLE_COUNT * 0.92) {
+      const h=Math.random()*32-14, layerNormalized=(h+14)/32, layerProgress=(layerNormalized*4)%1.0;
+      let baseRadius=(1.0-layerNormalized)*18; baseRadius*=Math.pow(layerProgress,0.42);
+      const angle=Math.random()*Math.PI*2, r=Math.max(0, baseRadius*Math.sqrt(Math.random())+(Math.random()-0.5)*2.5);
+      targetPositions.tree[i3]=Math.cos(angle)*r; targetPositions.tree[i3+1]=h; targetPositions.tree[i3+2]=Math.sin(angle)*r;
+    } else {
+      const h=Math.random()*5-19, r=Math.random()*2.2, angle=Math.random()*Math.PI*2;
+      targetPositions.tree[i3]=Math.cos(angle)*r; targetPositions.tree[i3+1]=h; targetPositions.tree[i3+2]=Math.sin(angle)*r;
+    }
+    if (i < PARTICLE_COUNT * 0.42) {
+      const theta=Math.random()*Math.PI*2, phi=Math.acos(2*Math.random()-1), latFlatten=0.82+Math.random()*0.06, r=11.5*Math.cbrt(Math.random());
+      targetPositions.saturn[i3]=r*Math.sin(phi)*Math.cos(theta); targetPositions.saturn[i3+1]=r*Math.sin(phi)*Math.sin(theta)*latFlatten; targetPositions.saturn[i3+2]=r*Math.cos(phi);
+    } else {
+      const ringBand=Math.random(), bandBase= ringBand<0.22?14.5: ringBand<0.48?18.5: ringBand<0.72?23.5:28.5;
+      const rRing=bandBase+Math.random()*3.5+Math.sin(bandBase*1.7+i*0.013)*0.9, thetaRing=Math.random()*Math.PI*2;
+      const ringRipple=Math.sin(thetaRing*10+rRing*0.9)*0.45+Math.sin(thetaRing*23)*0.18, ringThickness=(Math.random()-0.5)*(0.45+ringBand*0.85);
+      targetPositions.saturn[i3]=(rRing+ringRipple)*Math.cos(thetaRing); targetPositions.saturn[i3+1]=ringThickness; targetPositions.saturn[i3+2]=(rRing+ringRipple)*Math.sin(thetaRing);
+    }
+    const t=Math.PI*2*Math.random(), u=Math.PI*(Math.random()-0.5), x=16*Math.pow(Math.sin(t),3), y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t), z=6*Math.sin(u)*(1-Math.abs(Math.sin(t)));
+    targetPositions.heart[i3]=x*1.35; targetPositions.heart[i3+1]=y*1.35; targetPositions.heart[i3+2]=z*1.35;
+  }
+}
+
+function initThree() {
+  const container=document.getElementById("canvas-container");
+  scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x070709, 0.012);
+  camera=new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.set(0,5,58);
+  renderer=new THREE.WebGLRenderer({ antialias:true, alpha:false });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  container.appendChild(renderer.domElement);
+  controls=new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping=true; controls.dampingFactor=0.05; controls.minDistance=18; controls.maxDistance=110;
+  generateModelPositions();
+  particleGeometry=new THREE.BufferGeometry();
+  particleGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(targetPositions.tree),3));
+  const material=new THREE.PointsMaterial({ size:0.34, color:new THREE.Color(document.getElementById("particle-color").value), transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true });
+  particleSystem=new THREE.Points(particleGeometry, material); scene.add(particleSystem);
+  window.addEventListener("resize", onWindowResize);
+}
+
+let handLandmarksCache = [];
+function drawOverlay() {
+  const canvas=document.getElementById("overlay"), ctx=canvas.getContext("2d");
+  const video=document.getElementById("webcam");
+  canvas.width=video.clientWidth; canvas.height=video.clientHeight;
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  if (!handLandmarksCache.length) return;
+  const connections=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+  handLandmarksCache.forEach(hand=>{
+    ctx.strokeStyle="rgba(0,255,204,0.9)"; ctx.lineWidth=1.5; ctx.beginPath();
+    connections.forEach(([a,b])=>{ ctx.moveTo(hand[a].x*canvas.width, hand[a].y*canvas.height); ctx.lineTo(hand[b].x*canvas.width, hand[b].y*canvas.height); });
+    ctx.stroke();
+    hand.forEach(p=>{ ctx.fillStyle= p===hand[8]||p===hand[4] ? "#ffcc00":"#00ffcc"; ctx.beginPath(); ctx.arc(p.x*canvas.width, p.y*canvas.height, p===hand[0]?4:2.2,0,Math.PI*2); ctx.fill(); });
+  });
+}
+
+function initWebcamAndAI() {
+  const videoElement=document.getElementById("webcam"), loadingText=document.getElementById("loading"), camStatus=document.getElementById("cam-status");
+  const statusCard=document.getElementById("gesture-status"), statusText=document.getElementById("status-text"), meterFill=document.getElementById("meter-fill"), scaleLabel=document.getElementById("scale-label");
+
+  if (!window.Hands || !window.Camera) {
+    loadingText.innerHTML='<div class="loading-card"><h3>Offline mode</h3><p>MediaPipe failed to load — particles still work with mouse.</p></div>';
+    statusText.innerHTML="AI library failed to load. Use mouse to orbit.";
+    setTimeout(()=>{ loadingText.style.opacity="0"; setTimeout(()=>loadingText.remove(),500); },2000);
+    return;
+  }
+  const hands=new Hands({ locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+  // Tuned for stability — higher confidence + 0.65 tracking reduces jitter vs 0.5
+  hands.setOptions({ maxNumHands:2, modelComplexity:1, minDetectionConfidence:0.65, minTrackingConfidence:0.65 });
+
+  let lastFps=0, frameCount=0, lastTime=performance.now();
+  hands.onResults((results)=>{
+    if (loadingText && document.body.contains(loadingText)) { loadingText.style.opacity="0"; setTimeout(()=>loadingText.remove(),500); }
+    let landmarks=results.multiHandLandmarks||[], handedness=results.multiHandedness||[];
+    // Smooth landmarks temporally before any analysis
+    if (landmarks.length) landmarks = smoothLandmarks(landmarks);
+    else landmarkHistory = []; // reset when no hands
+    handLandmarksCache = landmarks; drawOverlay();
+
+    // fps
+    frameCount++; const now=performance.now(); if (now-lastTime>500){ lastFps=Math.round(frameCount*1000/(now-lastTime)); document.getElementById("fps").textContent=lastFps+" fps"; frameCount=0; lastTime=now; }
+
+    if (!cameraEnabled) return;
+    if (landmarks.length>0) {
+      missingFrames = 0; lastHandTime = now;
+      statusCard.classList.add("active"); camStatus.textContent = landmarks.length+" hand"+(landmarks.length>1?"s":"");
+      camStatus.style.color="var(--accent)";
+      const rawAnalyses=landmarks.map((hand,idx)=>{ const info=analyzeHand(hand); const label=handedness[idx]?.label||`Hand ${idx+1}`; return {...info, label}; });
+
+      // --- Fist hysteresis: require 3/4 frames agreement to toggle (prevents flicker) ---
+      const rawFist = rawAnalyses[0]?.isFist || false;
+      fistHistory.push(rawFist); if (fistHistory.length>6) fistHistory.shift();
+      const fistVotes = fistHistory.filter(Boolean).length;
+      const stableIsFist = landmarks.length===1 ? (fistVotes >= 4) : rawFist; // stricter for 1-hand
+      // Override analyses[0] isFist with debounced value for 1-hand case
+      if (rawAnalyses.length===1) rawAnalyses[0].isFist = stableIsFist;
+
+      const analyses = rawAnalyses;
+
+      // --- Rotation: deadzone + EMA (kills micro-jitter) ---
+      const avgCenterX=analyses.reduce((s,a)=>s+a.handCenterX,0)/analyses.length, avgCenterY=analyses.reduce((s,a)=>s+a.handCenterY,0)/analyses.length;
+      const rawRotY=-(avgCenterX-0.5)*Math.PI*1.6; // slightly reduced from 1.8 for less twitch
+      const rawRotX=(avgCenterY-0.5)*Math.PI*1.0;
+      if (!smoothingEnabled) {
+        smoothRotY = rawRotY; smoothRotX = rawRotX; rotEmaY = rawRotY; rotEmaX = rawRotX;
+        targetRotationY = rawRotY; targetRotationX = rawRotX;
+      } else {
+        // EMA with velocity-adaptive alpha
+        const rotVel = Math.hypot(rawRotY - rotEmaY, rawRotX - rotEmaX);
+        const rotAlpha = THREE.MathUtils.clamp(0.09 + rotVel * 1.2, 0.09, 0.28);
+        rotEmaY = ema(rotEmaY, rawRotY, rotAlpha);
+        rotEmaX = ema(rotEmaX, rawRotX, rotAlpha);
+        // Deadzone around center to stop drift when hand is still
+        const drY = applyDeadzone(rotEmaY - smoothRotY, ROT_DEADZONE);
+        const drX = applyDeadzone(rotEmaX - smoothRotX, ROT_DEADZONE);
+        if (drY !== 0 || drX !== 0) {
+          smoothRotY += drY * 0.85;
+          smoothRotX += drX * 0.85;
+        }
+        targetRotationY = smoothRotY;
+        targetRotationX = smoothRotX;
+      }
+
+      // dots
+      for(let i=0;i<2;i++){
+        const dot=document.getElementById("dot-"+i);
+        if (analyses[i]){ dot.className="dot "+(analyses[i].isFist?"fist":"on"); dot.innerHTML=`<i></i> ${analyses[i].label} — ${analyses[i].isFist?"Fist":"Open"}`; }
+        else { dot.className="dot"; dot.innerHTML="<i></i> — idle"; }
+      }
+
+      // --- Scale: EMA + rate limit + deadzone ---
+      let rawScale = 1.0;
+      let debugDist = 0;
+      if (analyses.length===2) {
+        let interHandDist=Math.hypot(analyses[0].palmCenterX-analyses[1].palmCenterX, analyses[0].palmCenterY-analyses[1].palmCenterY);
+        debugDist = interHandDist;
+        if (!smoothingEnabled) { interDistEma = interHandDist; rawScale=THREE.MathUtils.clamp(mapTwoHandDistanceToScale(interHandDist), MIN_GESTURE_SCALE, MAX_GESTURE_SCALE); }
+        else { interDistEma = interDistEma===null ? interHandDist : ema(interDistEma, interHandDist, 0.22); rawScale=THREE.MathUtils.clamp(mapTwoHandDistanceToScale(interDistEma), MIN_GESTURE_SCALE, MAX_GESTURE_SCALE); debugDist = interDistEma; }
+        statusText.innerHTML=`<strong>2 hands</strong> — spread ${(debugDist*100).toFixed(0)}% &nbsp;•&nbsp; Move <b>apart</b> to enlarge`;
+      } else {
+        const a=analyses[0];
+        if (!smoothingEnabled) {
+          rawScale = stableIsFist ? THREE.MathUtils.clamp(mapPalmSizeToScale(a.palmSize), MIN_GESTURE_SCALE, MAX_GESTURE_SCALE) : 1.0;
+        } else {
+          if (stableIsFist) {
+            palmEma = palmEma===null ? a.palmSize : ema(palmEma, a.palmSize, 0.20);
+            rawScale=THREE.MathUtils.clamp(mapPalmSizeToScale(palmEma), MIN_GESTURE_SCALE, MAX_GESTURE_SCALE);
+          } else {
+            palmEma = a.palmSize;
+            rawScale=1.0;
+          }
+        }
+        statusText.innerHTML = stableIsFist ? `<strong>Fist</strong> — push closer to enlarge` : `<strong>Open hand</strong> — make a fist to zoom`;
+      }
+      if (!smoothingEnabled) { smoothScale = rawScale; scaleEma = rawScale; targetGestureScale = rawScale; }
+      else {
+        scaleEma = ema(scaleEma, rawScale, SCALE_LERP);
+        const scaleDelta = THREE.MathUtils.clamp(scaleEma - smoothScale, -MAX_SCALE_STEP, MAX_SCALE_STEP);
+        if (Math.abs(scaleDelta) > SCALE_DEADZONE) smoothScale += scaleDelta;
+        else if (Math.abs(scaleEma - 1.0) < 0.04) smoothScale = ema(smoothScale, 1.0, 0.08);
+        targetGestureScale = smoothScale;
+      }
+      const pct=THREE.MathUtils.clamp((targetGestureScale-MIN_GESTURE_SCALE)/(MAX_GESTURE_SCALE-MIN_GESTURE_SCALE),0,1);
+      meterFill.style.width=(pct*100).toFixed(1)+"%"; scaleLabel.textContent=targetGestureScale.toFixed(2)+"×";
+    } else {
+      missingFrames++;
+      // Hold last pose for 10 frames (~300ms) before fading — avoids flicker when tracking drops a frame
+      if (missingFrames > 10) {
+        statusCard.classList.remove("active"); camStatus.textContent="No hands"; camStatus.style.color="var(--muted)";
+        statusText.innerHTML="No hand detected.<br><span style='color:var(--muted)'>Place hands in camera view.</span>";
+        document.getElementById("dot-0").className="dot"; document.getElementById("dot-0").innerHTML="<i></i> Hand 1 — idle";
+        document.getElementById("dot-1").className="dot"; document.getElementById("dot-1").innerHTML="<i></i> Hand 2 — idle";
+        // Smooth return to rest, not snap
+        smoothScale = ema(smoothScale, 1.0, 0.08);
+        targetGestureScale = smoothScale;
+        smoothRotX *= 0.96; smoothRotY *= 0.96;
+        targetRotationX = smoothRotX; targetRotationY = smoothRotY;
+        palmEma = null; interDistEma = null; fistHistory = [];
+        rotEmaX *= 0.96; rotEmaY *= 0.96;
+      } else {
+        // Keep last targets, just slightly decay
+        targetGestureScale = smoothScale;
+        targetRotationX = smoothRotX; targetRotationY = smoothRotY;
+      }
+      const pct=(targetGestureScale-MIN_GESTURE_SCALE)/(MAX_GESTURE_SCALE-MIN_GESTURE_SCALE);
+      meterFill.style.width=(THREE.MathUtils.clamp(pct,0,1)*100)+"%"; scaleLabel.textContent=targetGestureScale.toFixed(2)+"×";
+    }
+  });
+
+  const cameraUtils=new Camera(videoElement, { onFrame: async()=>{ if(cameraEnabled) await hands.send({image:videoElement}); }, width:640, height:480 });
+  cameraUtils.start().then(()=>{
+    document.getElementById("cam-status").textContent="Live";
+    if (loadingText && document.body.contains(loadingText)) { setTimeout(()=>{ loadingText.style.opacity="0"; setTimeout(()=>loadingText.remove(),500); },800); }
+  }).catch((err)=>{
+    console.error(err);
+    document.getElementById("cam-status").textContent="Blocked";
+    loadingText.innerHTML='<div class="loading-card"><h3>Camera blocked</h3><p>Allow camera permission and use http://localhost:8000<br>Mouse still works.</p></div>';
+    statusText.textContent="Camera failed. Drag with mouse to rotate.";
+  });
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  if (!particleSystem || !particleGeometry) return;
+  if (autoSpin) { targetRotationY += 0.008; }
+  gestureScale += (targetGestureScale - gestureScale)*0.12;
+  const actualScale=BASE_MODEL_SCALE*gestureScale;
+  particleSystem.rotation.y += (targetRotationY - particleSystem.rotation.y)*0.05;
+  particleSystem.rotation.x += (targetRotationX - particleSystem.rotation.x)*0.05;
+  const positions=particleGeometry.attributes.position.array, targetArray=targetPositions[currentModel];
+  for(let i=0;i<PARTICLE_COUNT;i++){ const i3=i*3; positions[i3]+=(targetArray[i3]*actualScale-positions[i3])*morphSpeed; positions[i3+1]+=(targetArray[i3+1]*actualScale-positions[i3+1])*morphSpeed; positions[i3+2]+=(targetArray[i3+2]*actualScale-positions[i3+2])*morphSpeed; }
+  particleGeometry.attributes.position.needsUpdate=true;
+  controls.update(); renderer.render(scene,camera);
+}
+function onWindowResize(){ camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
+
+function setupUI(){
+  // shape cards
+  document.querySelectorAll(".shape-card").forEach(card=>{
+    card.addEventListener("click",()=>{
+      document.querySelectorAll(".shape-card").forEach(c=>c.classList.remove("active"));
+      card.classList.add("active"); currentModel=card.dataset.model;
+    });
+  });
+  // palette
+  const colorInput=document.getElementById("particle-color"), colorHex=document.getElementById("color-hex");
+  function setColor(c){
+    colorHex.textContent=c; colorInput.value=c;
+    document.documentElement.style.setProperty("--accent", c);
+    if(particleSystem) particleSystem.material.color.set(c);
+    document.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("active", s.dataset.color.toLowerCase()===c.toLowerCase()));
+  }
+  document.querySelectorAll(".swatch").forEach(s=> s.addEventListener("click",()=> setColor(s.dataset.color)));
+  colorInput.addEventListener("input", e=> setColor(e.target.value));
+  // sliders
+  const sizeSlider=document.getElementById("size-slider"), speedSlider=document.getElementById("speed-slider"), smoothSlider=document.getElementById("smooth-slider");
+  sizeSlider.addEventListener("input", e=>{ const v=parseFloat(e.target.value); document.getElementById("size-val").textContent=v.toFixed(2); if(particleSystem) particleSystem.material.size=v; });
+  speedSlider.addEventListener("input", e=>{ morphSpeed=parseFloat(e.target.value); document.getElementById("speed-val").textContent=morphSpeed.toFixed(2); });
+  smoothSlider.addEventListener("input", e=>{
+    const v=parseInt(e.target.value); applySmoothingPreset(v);
+    document.getElementById("smooth-val").textContent = v===0?"Off":v===1?"Medium":"High";
+  });
+  applySmoothingPreset(2);
+  // buttons
+  document.getElementById("btn-fullscreen").addEventListener("click",()=>{
+    if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen();
+  });
+  document.getElementById("btn-reset").addEventListener("click",()=>{
+    controls.reset(); targetRotationX=0; targetRotationY=0; targetGestureScale=1.0; camera.position.set(0,5,58); controls.update();
+  });
+  document.getElementById("btn-auto").addEventListener("click", function(){
+    autoSpin=!autoSpin; this.classList.toggle("active", autoSpin); this.textContent= autoSpin ? "◼ Stop" : "Auto spin";
+  });
+  document.getElementById("btn-collapse").addEventListener("click",()=>{
+    document.getElementById("panel").classList.toggle("collapsed");
+  });
+  document.getElementById("btn-help").addEventListener("click",()=>{
+    document.getElementById("help-section").hidden = !document.getElementById("help-section").hidden;
+  });
+  document.getElementById("btn-camera").addEventListener("click", function(){
+    cameraEnabled=!cameraEnabled; this.classList.toggle("active", !cameraEnabled);
+    document.getElementById("webcam-wrap").style.opacity= cameraEnabled?"1":"0.35";
+    document.getElementById("cam-status").textContent= cameraEnabled?"Live":"Paused";
+  });
+  // keyboard
+  window.addEventListener("keydown", e=>{
+    if(e.key.toLowerCase()==="f") document.getElementById("btn-fullscreen").click();
+    if(e.key.toLowerCase()==="h") document.getElementById("btn-collapse").click();
+    if(e.key.toLowerCase()==="c") document.getElementById("btn-camera").click();
+  });
+}
+
+window.addEventListener("DOMContentLoaded",()=>{ initThree(); setupUI(); animate(); initWebcamAndAI(); });
+</script>
+</body>
+</html>

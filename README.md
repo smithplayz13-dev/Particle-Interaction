@@ -5,7 +5,7 @@ Interactive 3D particle system with dual-hand gesture control. Built with **Thre
 Live: \index.html\ (GitHub Pages) — open via \https://smithplayz13-dev.github.io/Particle-Interaction/\ after enabling Pages.
 
 ## Features
-- 35,000 particles morphing between **Christmas Tree / Saturn / Heart**
+- 35,000 particles morphing between **8 shapes: Tree / Saturn / Heart / Sphere / Cube / Torus / Galaxy / DNA**
 - **Dual-hand** tracking: 1-hand fist zoom + 2-hand spread/pinch zoom, averaged rotation
 - Smoothed detection (landmark averaging, fist hysteresis, EMA + deadzone, hold on drop)
 - Premium glass UI with shape cards, palette, size/speed/smoothing sliders, hand skeleton overlay

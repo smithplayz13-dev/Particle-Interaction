@@ -140,7 +140,28 @@
       width: 260px; border-radius: 18px; overflow: hidden;
       background: #000; border:1px solid rgba(255,255,255,0.1);
       box-shadow: 0 16px 48px rgba(0,0,0,0.6); backdrop-filter: blur(12px);
+      transition: transform .25s, opacity .25s;
     }
+    .webcam-wrap.hidden { display: none !important; }
+    .webcam-wrap.minimized #webcam, .webcam-wrap.minimized #overlay, .webcam-wrap.minimized .webcam-footer { display: none; }
+    .webcam-wrap.minimized { width: 260px; }
+    #btn-show-webcam {
+      position: absolute; bottom: 20px; right: 20px; z-index: 10;
+      display: none; align-items: center; gap:8px;
+      padding: 10px 14px; border-radius: 12px;
+      background: var(--panel); backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border); color: white;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #btn-show-webcam.visible { display: flex; }
+    .webcam-controls { display:flex; gap:6px; align-items:center; }
+    .wcam-btn {
+      width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.08); color: var(--muted); cursor: pointer;
+      display: grid; place-items: center; font-size: 11px; line-height: 1;
+    }
+    .wcam-btn:hover { background: rgba(255,255,255,0.14); color: white; }
     .webcam-header {
       display:flex; align-items:center; justify-content:space-between;
       padding:10px 12px; background: rgba(18,18,20,0.9); border-bottom:1px solid rgba(255,255,255,0.06);
@@ -207,7 +228,8 @@
       <div class="brand-text"><h1>Lumina</h1><p>Particle Playground • Dual Hand</p></div>
     </div>
     <div class="header-actions">
-      <button class="icon-btn" id="btn-camera" title="Toggle camera">◉</button>
+      <button class="icon-btn" id="btn-hide-webcam" title="Hide camera window">👁</button>
+      <button class="icon-btn" id="btn-camera" title="Pause camera tracking">◉</button>
       <button class="icon-btn" id="btn-help" title="Toggle help">?</button>
       <button class="icon-btn" id="btn-fullscreen" title="Fullscreen">⛶</button>
     </div>
@@ -290,8 +312,18 @@
     </div>
   </div>
 
+  <button id="btn-show-webcam" title="Show camera window">👁 Show Camera</button>
   <div class="webcam-wrap" id="webcam-wrap">
-    <div class="webcam-header"><span style="display:flex; align-items:center; gap:8px"><span class="live-dot"></span> Camera</span><span id="cam-status" style="font-size:10px; color:var(--muted)">Starting…</span></div>
+    <div class="webcam-header">
+      <span style="display:flex; align-items:center; gap:8px"><span class="live-dot"></span> Camera</span>
+      <span style="display:flex; align-items:center; gap:10px">
+        <span id="cam-status" style="font-size:10px; color:var(--muted)">Starting…</span>
+        <span class="webcam-controls">
+          <button class="wcam-btn" id="btn-wcam-minimize" title="Minimize">—</button>
+          <button class="wcam-btn" id="btn-wcam-hide" title="Hide window">×</button>
+        </span>
+      </span>
+    </div>
     <div style="position:relative">
       <video id="webcam" autoplay playsinline muted></video>
       <canvas id="overlay"></canvas>
@@ -302,7 +334,8 @@
   <div class="hint-bar" id="hint-bar">
     <div class="hint"><kbd>F</kbd> Fullscreen</div>
     <div class="hint"><kbd>H</kbd> Hide panel</div>
-    <div class="hint"><kbd>C</kbd> Camera</div>
+    <div class="hint"><kbd>C</kbd> Pause</div>
+    <div class="hint"><kbd>V</kbd> Hide cam</div>
     <div class="hint"> <span style="color:var(--accent)">◈</span> Fist = zoom (1 hand) • Spread = zoom (2 hands)</div>
   </div>
 
@@ -726,11 +759,31 @@ function setupUI(){
     document.getElementById("webcam-wrap").style.opacity= cameraEnabled?"1":"0.35";
     document.getElementById("cam-status").textContent= cameraEnabled?"Live":"Paused";
   });
+  // webcam hide / minimize — requested feature
+  const webcamWrap = document.getElementById("webcam-wrap");
+  const btnShowWebcam = document.getElementById("btn-show-webcam");
+  let webcamHidden = false, webcamMinimized = false;
+  function setWebcamHidden(h){
+    webcamHidden = h;
+    webcamWrap.classList.toggle("hidden", h);
+    btnShowWebcam.classList.toggle("visible", h);
+    const b=document.getElementById("btn-hide-webcam");
+    if(b){ b.classList.toggle("active", h); b.title = h ? "Show camera window" : "Hide camera window"; }
+  }
+  function setWebcamMinimized(m){
+    webcamMinimized = m;
+    webcamWrap.classList.toggle("minimized", m);
+  }
+  document.getElementById("btn-hide-webcam").addEventListener("click", ()=> setWebcamHidden(!webcamHidden));
+  document.getElementById("btn-wcam-hide").addEventListener("click", ()=> setWebcamHidden(true));
+  document.getElementById("btn-show-webcam").addEventListener("click", ()=> setWebcamHidden(false));
+  document.getElementById("btn-wcam-minimize").addEventListener("click", ()=> setWebcamMinimized(!webcamMinimized));
   // keyboard
   window.addEventListener("keydown", e=>{
     if(e.key.toLowerCase()==="f") document.getElementById("btn-fullscreen").click();
     if(e.key.toLowerCase()==="h") document.getElementById("btn-collapse").click();
     if(e.key.toLowerCase()==="c") document.getElementById("btn-camera").click();
+    if(e.key.toLowerCase()==="v") document.getElementById("btn-hide-webcam").click();
   });
 }
 

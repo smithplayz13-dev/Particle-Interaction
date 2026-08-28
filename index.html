@@ -205,6 +205,18 @@
     .loading-card h3 { margin:0 0 6px; font-size:15px; font-weight:600; }
     .loading-card p { margin:0; font-size:12px; color:var(--muted); }
 
+    /* Grab mode */
+    .grab-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:12px; background: rgba(255,255,255,0.05); border:1px solid var(--panel-border); margin-bottom:10px; }
+    .grab-toggle-row.active { border-color: var(--accent); background: rgba(0,255,204,0.08); }
+    .toggle-switch { width:44px; height:26px; border-radius:20px; background: rgba(255,255,255,0.15); position:relative; cursor:pointer; transition:.2s; border:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
+    .toggle-switch.on { background: var(--accent); border-color: var(--accent); }
+    .toggle-switch::after { content:""; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:white; transition:.2s; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
+    .toggle-switch.on::after { transform: translateX(18px); }
+    .grab-modes { display:flex; gap:6px; margin-bottom:10px; }
+    .grab-mode-btn { flex:1; padding:8px 6px; border-radius:10px; border:1px solid var(--panel-border); background: rgba(255,255,255,0.06); color:var(--muted); font-size:11px; font-weight:600; cursor:pointer; text-align:center; transition:.2s; }
+    .grab-mode-btn.active { background: linear-gradient(135deg, rgba(0,255,204,0.18), rgba(124,92,255,0.18)); border-color: var(--accent); color:white; box-shadow:0 0 0 2px rgba(0,255,204,0.12); }
+    .grab-cursor { position:absolute; inset:0; pointer-events:none; z-index:2; }
+
     @media (max-width: 768px) {
       .panel { width: calc(100vw - 24px); left:12px; top:64px; max-height: 46vh; }
       .webcam-wrap { width: 150px; bottom: 70px; right:12px; }
@@ -228,6 +240,7 @@
       <div class="brand-text"><h1>Lumina</h1><p>Particle Playground • Dual Hand</p></div>
     </div>
     <div class="header-actions">
+      <button class="icon-btn" id="btn-grab" title="Toggle grab mode (G)">✋</button>
       <button class="icon-btn" id="btn-hide-webcam" title="Hide camera window">👁</button>
       <button class="icon-btn" id="btn-camera" title="Pause camera tracking">◉</button>
       <button class="icon-btn" id="btn-help" title="Toggle help">?</button>
@@ -301,12 +314,46 @@
         </div>
       </div>
 
+      <div class="section" id="grab-section">
+        <div class="section-label"><span></span> Grab &amp; Sculpt</div>
+        <div class="grab-toggle-row" id="grab-toggle-row">
+          <div>
+            <div style="font-size:12px; font-weight:600;">Grab particles</div>
+            <div style="font-size:11px; color:var(--muted);">Drag to move · Hand pinch to grab</div>
+          </div>
+          <div class="toggle-switch" id="grab-toggle"></div>
+        </div>
+        <div id="grab-controls" style="opacity:0.45; pointer-events:none;">
+          <div class="grab-modes">
+            <button class="grab-mode-btn active" data-mode="attract">✋ Attract</button>
+            <button class="grab-mode-btn" data-mode="repel">💨 Repel</button>
+            <button class="grab-mode-btn" data-mode="drag">↔ Drag</button>
+          </div>
+          <div style="margin-bottom:10px">
+            <div class="slider-row"><span>Brush size</span><strong id="grab-radius-val">8.0</strong></div>
+            <input type="range" id="grab-radius" min="2" max="18" step="0.5" value="8" />
+          </div>
+          <div style="margin-bottom:10px">
+            <div class="slider-row"><span>Strength</span><strong id="grab-strength-val">0.35</strong></div>
+            <input type="range" id="grab-strength" min="0.05" max="1.0" step="0.05" value="0.35" />
+          </div>
+          <label style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); margin-bottom:10px; cursor:pointer;">
+            <input type="checkbox" id="grab-hand-toggle" checked style="accent-color:var(--accent)"> Enable hand pinch grab
+          </label>
+          <div style="display:flex; gap:8px;">
+            <button class="icon-btn" style="flex:1; width:auto; height:32px; border-radius:10px; font-size:11px; font-weight:600" id="btn-grab-reset">↺ Release sculpt</button>
+            <button class="icon-btn" style="flex:1; width:auto; height:32px; border-radius:10px; font-size:11px; font-weight:600" id="btn-grab-scatter">✦ Scatter</button>
+          </div>
+        </div>
+      </div>
+
       <div class="section" id="help-section">
         <div class="section-label"><span></span> How to interact</div>
         <div style="font-size:12px; line-height:1.6; color:#d4d4d8; background:rgba(255,255,255,0.04); border:1px solid var(--panel-border); border-radius:12px; padding:12px">
           <strong style="color:var(--accent)">1 hand:</strong> Move to rotate • Make a <b>fist</b> and push/pull to zoom<br>
           <strong style="color:var(--accent-2)">2 hands:</strong> Rotate from midpoint • Spread / pinch to zoom<br>
-          <strong>Mouse:</strong> Drag to orbit • Scroll to zoom • Right-drag to pan
+          <strong>Mouse:</strong> Drag to orbit • Scroll to zoom • Right-drag to pan<br>
+          <strong style="color:var(--accent)">Grab ON:</strong> Hold <b>left-drag</b> to sculpt • <b>Pinch</b> (thumb+index) to grab with hand • <b>G</b> toggle
         </div>
       </div>
     </div>
@@ -356,6 +403,14 @@ const targetPositions = {
 let currentModel = "tree";
 let gestureScale = 1.0, targetGestureScale = 1.0, targetRotationX = 0, targetRotationY = 0;
 let morphSpeed = 0.08, autoSpin = false, cameraEnabled = true;
+// --- Grab / Sculpt ---
+let grabOffsets = new Float32Array(PARTICLE_COUNT * 3);
+let grabEnabled = false, grabMode = 'attract', grabRadius = 8.0, grabStrength = 0.35, handGrabEnabled = true;
+let isGrabDragging = false, grabDeltaLocal = new THREE.Vector3();
+let lastGrabLocal = null, grabCursorMesh = null;
+let raycaster = new THREE.Raycaster(); let mouseNDC = new THREE.Vector2();
+let grabPlane = new THREE.Plane(new THREE.Vector3(0,0,1), 0);
+if (typeof THREE !== 'undefined' && THREE.Raycaster) { raycaster.params.Points.threshold = 2; }
 const BASE_MODEL_SCALE = 1.75;
 const MIN_GESTURE_SCALE = 0.1, MAX_GESTURE_SCALE = 2.4;
 const PALM_SIZE_MIN = 0.11, PALM_SIZE_MAX = 0.28, PALM_SIZE_SCALE_ONE = 0.1547368421;
@@ -394,6 +449,93 @@ function smoothLandmarks(landmarks) {
   }));
 }
 
+function isPinching(hand){ return Math.hypot(hand[4].x-hand[8].x, hand[4].y-hand[8].y) < 0.055; }
+
+// Grab helpers — world ray -> local point + apply deformation to offsets
+function screenToLocalPoint(ndcX, ndcY, targetVec){
+  if (!camera || !particleSystem) return null;
+  raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), camera);
+  // intersect with plane through origin facing camera
+  const camDir = new THREE.Vector3(); camera.getWorldDirection(camDir);
+  grabPlane.normal.copy(camDir).negate(); grabPlane.constant = 0;
+  // shift plane to particleSystem world position
+  const sysPos = new THREE.Vector3(); particleSystem.getWorldPosition(sysPos);
+  grabPlane.constant = -grabPlane.normal.dot(sysPos);
+  const worldPt = new THREE.Vector3();
+  if (!raycaster.ray.intersectPlane(grabPlane, worldPt)) return null;
+  const local = worldPt.clone(); particleSystem.worldToLocal(local);
+  if (targetVec) targetVec.copy(local);
+  return local;
+}
+function applyGrabAt(localPoint, radius, strength, mode){
+  if (!particleGeometry || !localPoint) return 0;
+  const positions = particleGeometry.attributes.position.array;
+  const r2 = radius*radius;
+  let affected = 0;
+  // iterate all particles — 35k is fine (~0.5ms)
+  for(let i=0;i<PARTICLE_COUNT;i++){
+    const i3=i*3;
+    const dx = localPoint.x - positions[i3];
+    const dy = localPoint.y - positions[i3+1];
+    const dz = localPoint.z - positions[i3+2];
+    const d2 = dx*dx + dy*dy + dz*dz;
+    if (d2 > r2) continue;
+    const d = Math.sqrt(d2);
+    const falloff = Math.pow(1 - d / radius, 2); // quadratic falloff
+    const s = strength * falloff;
+    if (mode === 'attract'){
+      grabOffsets[i3]   += dx * s;
+      grabOffsets[i3+1] += dy * s;
+      grabOffsets[i3+2] += dz * s;
+      // nudge current positions for immediacy
+      positions[i3]   += dx * s * 0.45;
+      positions[i3+1] += dy * s * 0.45;
+      positions[i3+2] += dz * s * 0.45;
+    } else if (mode === 'repel'){
+      grabOffsets[i3]   -= dx * s;
+      grabOffsets[i3+1] -= dy * s;
+      grabOffsets[i3+2] -= dz * s;
+      positions[i3]   -= dx * s * 0.45;
+      positions[i3+1] -= dy * s * 0.45;
+      positions[i3+2] -= dz * s * 0.45;
+    } else if (mode === 'drag'){
+      if (!lastGrabLocal) continue;
+      // drag: move particles by delta of grab point
+      grabOffsets[i3]   += grabDeltaLocal.x * s * 2.2;
+      grabOffsets[i3+1] += grabDeltaLocal.y * s * 2.2;
+      grabOffsets[i3+2] += grabDeltaLocal.z * s * 2.2;
+      positions[i3]   += grabDeltaLocal.x * s * 1.1;
+      positions[i3+1] += grabDeltaLocal.y * s * 1.1;
+      positions[i3+2] += grabDeltaLocal.z * s * 1.1;
+    }
+    affected++;
+  }
+  if (affected) particleGeometry.attributes.position.needsUpdate = true;
+  return affected;
+}
+function updateGrabCursor(worldLocal){
+  if (!grabCursorMesh) return;
+  if (!grabEnabled || !worldLocal){ grabCursorMesh.visible=false; return; }
+  grabCursorMesh.visible = true;
+  grabCursorMesh.position.copy(worldLocal);
+  // convert local to world for cursor? cursor is child of particleSystem so local is correct
+  const s = grabRadius; grabCursorMesh.scale.set(s/8, s/8, s/8);
+  grabCursorMesh.material.opacity = isGrabDragging ? 0.65 : 0.35;
+}
+function setGrabEnabled(v){
+  grabEnabled = v;
+  document.getElementById('grab-toggle').classList.toggle('on', v);
+  document.getElementById('grab-toggle-row').classList.toggle('active', v);
+  document.getElementById('grab-controls').style.opacity = v ? '1' : '0.45';
+  document.getElementById('grab-controls').style.pointerEvents = v ? 'auto' : 'none';
+  document.getElementById('btn-grab').classList.toggle('active', v);
+  if (controls) controls.enabled = ! (v && isGrabDragging);
+  if (grabCursorMesh) grabCursorMesh.visible = v;
+  document.body.style.cursor = v ? 'grab' : '';
+  // hint
+  const hb = document.getElementById('hint-bar'); if(hb) hb.style.borderColor = v ? 'rgba(0,255,204,0.35)' : '';
+}
+
 function analyzeHand(hand) {
   const wrist = hand[0], thumbTip = hand[4], thumbIP = hand[3], indexPip = hand[6], indexTip = hand[8], middlePip = hand[10], middleTip = hand[12], ringPip = hand[14], ringTip = hand[16], pinkyPip = hand[18], pinkyTip = hand[20], middleBase = hand[9];
   const palmSize = Math.hypot(wrist.x - middleBase.x, wrist.y - middleBase.y) || 0.08;
@@ -407,9 +549,12 @@ function analyzeHand(hand) {
   const pinkyCurled = Math.hypot(pinkyTip.x - wrist.x, pinkyTip.y - wrist.y) < Math.hypot(pinkyPip.x - wrist.x, pinkyPip.y - wrist.y) * 1.12;
   const curledCount = [indexCurled, middleCurled, ringCurled, pinkyCurled].filter(Boolean).length;
   const isFist = openness < 1.72 && thumbCurled && curledCount >= 3;
+  const pinchDist = Math.hypot(thumbTip.x - indexTip.x, thumbTip.y - indexTip.y);
+  const isPinch = pinchDist < 0.055; // thumb-index close (normalized screen)
+  const pinchCenterX = (thumbTip.x + indexTip.x)*0.5, pinchCenterY = (thumbTip.y + indexTip.y)*0.5;
   const handCenterX = (wrist.x + middleBase.x + hand[5].x + hand[17].x) * 0.25;
   const handCenterY = (wrist.y + middleBase.y + hand[5].y + hand[17].y) * 0.25;
-  return { palmSize, palmCenterX, palmCenterY, handCenterX, handCenterY, isFist, openness };
+  return { palmSize, palmCenterX, palmCenterY, handCenterX, handCenterY, isFist, openness, isPinch, pinchDist, pinchCenterX, pinchCenterY };
 }
 
 function generateModelPositions() {
@@ -532,7 +677,78 @@ function initThree() {
   particleGeometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(targetPositions.tree),3));
   const material=new THREE.PointsMaterial({ size:0.34, color:new THREE.Color(document.getElementById("particle-color").value), transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true });
   particleSystem=new THREE.Points(particleGeometry, material); scene.add(particleSystem);
+  // grab cursor - sphere wireframe inside particleSystem local space
+  const cg = new THREE.SphereGeometry(1, 24, 24);
+  const cm = new THREE.MeshBasicMaterial({ color:0x00ffcc, wireframe:true, transparent:true, opacity:0.35, depthWrite:false });
+  grabCursorMesh = new THREE.Mesh(cg, cm);
+  grabCursorMesh.visible = false;
+  grabCursorMesh.renderOrder = 10;
+  particleSystem.add(grabCursorMesh);
+  // mouse grab handlers
+  setupGrabMouseHandlers();
   window.addEventListener("resize", onWindowResize);
+}
+function setupGrabMouseHandlers(){
+  const canvas = () => renderer ? renderer.domElement : null;
+  function getNDC(e){
+    const c = canvas(); if(!c) return null;
+    const rect = c.getBoundingClientRect();
+    return { x: ((e.clientX - rect.left)/rect.width)*2 -1, y: -((e.clientY - rect.top)/rect.height)*2 +1 };
+  }
+  function onMove(e){
+    if (!grabEnabled) { if(grabCursorMesh) grabCursorMesh.visible=false; return; }
+    const ndc = getNDC(e); if(!ndc) return;
+    const local = screenToLocalPoint(ndc.x, ndc.y, new THREE.Vector3());
+    if (!local) return;
+    updateGrabCursor(local);
+    if (isGrabDragging){
+      if (lastGrabLocal){
+        grabDeltaLocal.copy(local).sub(lastGrabLocal);
+        applyGrabAt(local, grabRadius, grabStrength, grabMode);
+      }
+      lastGrabLocal = local.clone();
+      // disable orbit while dragging
+      if (controls) controls.enabled = false;
+    } else {
+      // hover preview no deformation
+      lastGrabLocal = local.clone();
+    }
+  }
+  function onDown(e){
+    if (!grabEnabled) return;
+    if (e.button !== 0) return; // left only
+    // ignore clicks on UI panels
+    if (e.target.closest && e.target.closest('.panel, .header, .webcam-wrap, #hint-bar')) return;
+    const ndc = getNDC(e); if(!ndc) return;
+    const local = screenToLocalPoint(ndc.x, ndc.y, new THREE.Vector3());
+    if (!local) return;
+    isGrabDragging = true;
+    lastGrabLocal = local.clone();
+    grabDeltaLocal.set(0,0,0);
+    applyGrabAt(local, grabRadius, grabStrength, grabMode);
+    updateGrabCursor(local);
+    if (controls) controls.enabled = false;
+    document.body.style.cursor = 'grabbing';
+    e.preventDefault();
+  }
+  function onUp(){
+    if (isGrabDragging){
+      isGrabDragging = false;
+      lastGrabLocal = null;
+      grabDeltaLocal.set(0,0,0);
+      if (controls) controls.enabled = !grabEnabled ? true : true; // re-enable but keep compatible
+      // when grab enabled, orbit should still work when not dragging
+      if (controls) controls.enabled = true;
+      document.body.style.cursor = grabEnabled ? 'grab' : '';
+    }
+  }
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mousedown', onDown);
+  window.addEventListener('mouseup', onUp);
+  // touch
+  window.addEventListener('touchmove', (e)=>{ if(e.touches[0]) onMove(e.touches[0]); }, {passive:false});
+  window.addEventListener('touchstart', (e)=>{ if(e.touches[0]) onDown(e.touches[0]); }, {passive:false});
+  window.addEventListener('touchend', onUp);
 }
 
 let handLandmarksCache = [];
@@ -659,6 +875,51 @@ function initWebcamAndAI() {
       }
       const pct=THREE.MathUtils.clamp((targetGestureScale-MIN_GESTURE_SCALE)/(MAX_GESTURE_SCALE-MIN_GESTURE_SCALE),0,1);
       meterFill.style.width=(pct*100).toFixed(1)+"%"; scaleLabel.textContent=targetGestureScale.toFixed(2)+"×";
+
+      // --- Hand Grab: pinch to attract/repel/drag ---
+      if (grabEnabled && handGrabEnabled && particleSystem){
+        let didHandGrab = false;
+        let handGrabLocal = null;
+        for (const a of analyses){
+          if (a.isPinch){
+            // map pinch center to NDC (mirrored X)
+            const ndcX = -(a.pinchCenterX - 0.5)*2;
+            const ndcY = -(a.pinchCenterY - 0.5)*2;
+            const local = screenToLocalPoint(ndcX, ndcY, new THREE.Vector3());
+            if (local){
+              // track delta for drag mode
+              if (handGrabLocal){ grabDeltaLocal.copy(local).sub(handGrabLocal); }
+              else { grabDeltaLocal.copy(local).sub(local); }
+              handGrabLocal = local.clone();
+              // show cursor at first hand
+              if (!didHandGrab) updateGrabCursor(local);
+              // apply — keep grab visible
+              if (particleGeometry) applyGrabAt(local, grabRadius, grabStrength * 0.85, grabMode);
+              didHandGrab = true;
+              // update dot to show grab
+              const idx = analyses.indexOf(a);
+              const dotEl = document.getElementById("dot-"+idx);
+              if (dotEl) { dotEl.className = "dot fist"; dotEl.innerHTML = `<i></i> ${a.label} — Grab ✋`; }
+            }
+          }
+        }
+        if (didHandGrab){
+          lastGrabLocal = handGrabLocal;
+          if (grabMode === 'drag' && handGrabLocal) { /* delta already used */ }
+        } else {
+          // no pinch: show hover cursor at open hand center but don't deform
+          const a = analyses[0];
+          const ndcX = -(a.handCenterX - 0.5)*2;
+          const ndcY = -(a.handCenterY - 0.5)*2;
+          const hoverLocal = screenToLocalPoint(ndcX, ndcY, new THREE.Vector3());
+          if (hoverLocal) updateGrabCursor(hoverLocal);
+        }
+        // when pinching, suppress rotation/zoom to allow precise sculpting
+        if (didHandGrab){
+          // damp rotation while grabbing to keep cloud stable
+          targetRotationX = smoothRotX; targetRotationY = smoothRotY;
+        }
+      }
     } else {
       missingFrames++;
       // Hold last pose for 10 frames (~300ms) before fading — avoids flicker when tracking drops a frame
@@ -705,7 +966,8 @@ function animate(){
   particleSystem.rotation.y += (targetRotationY - particleSystem.rotation.y)*0.05;
   particleSystem.rotation.x += (targetRotationX - particleSystem.rotation.x)*0.05;
   const positions=particleGeometry.attributes.position.array, targetArray=targetPositions[currentModel];
-  for(let i=0;i<PARTICLE_COUNT;i++){ const i3=i*3; positions[i3]+=(targetArray[i3]*actualScale-positions[i3])*morphSpeed; positions[i3+1]+=(targetArray[i3+1]*actualScale-positions[i3+1])*morphSpeed; positions[i3+2]+=(targetArray[i3+2]*actualScale-positions[i3+2])*morphSpeed; }
+  // decay sculpt slightly if not grabbing? keep persistent unless reset
+  for(let i=0;i<PARTICLE_COUNT;i++){ const i3=i*3; const tx = targetArray[i3]*actualScale + grabOffsets[i3]; const ty = targetArray[i3+1]*actualScale + grabOffsets[i3+1]; const tz = targetArray[i3+2]*actualScale + grabOffsets[i3+2]; positions[i3]+=(tx-positions[i3])*morphSpeed; positions[i3+1]+=(ty-positions[i3+1])*morphSpeed; positions[i3+2]+=(tz-positions[i3+2])*morphSpeed; }
   particleGeometry.attributes.position.needsUpdate=true;
   controls.update(); renderer.render(scene,camera);
 }
@@ -778,12 +1040,47 @@ function setupUI(){
   document.getElementById("btn-wcam-hide").addEventListener("click", ()=> setWebcamHidden(true));
   document.getElementById("btn-show-webcam").addEventListener("click", ()=> setWebcamHidden(false));
   document.getElementById("btn-wcam-minimize").addEventListener("click", ()=> setWebcamMinimized(!webcamMinimized));
+  // grab UI
+  const grabToggleEl = document.getElementById('grab-toggle');
+  const grabRow = document.getElementById('grab-toggle-row');
+  const grabRadiusEl = document.getElementById('grab-radius');
+  const grabStrengthEl = document.getElementById('grab-strength');
+  function syncGrabUI(){
+    document.getElementById('grab-radius-val').textContent = grabRadius.toFixed(1);
+    document.getElementById('grab-strength-val').textContent = grabStrength.toFixed(2);
+    if (grabCursorMesh) { grabCursorMesh.material.color.set(document.documentElement.style.getPropertyValue('--accent') || '#00ffcc'); }
+  }
+  if (grabToggleEl) grabToggleEl.addEventListener('click', ()=> setGrabEnabled(!grabEnabled));
+  if (grabRow) grabRow.addEventListener('click', (e)=>{ if(e.target.closest('.toggle-switch')) return; /* allow row click */ });
+  document.getElementById('btn-grab').addEventListener('click', ()=> setGrabEnabled(!grabEnabled));
+  document.querySelectorAll('.grab-mode-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('.grab-mode-btn').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); grabMode = b.dataset.mode;
+      if (grabCursorMesh){ grabCursorMesh.material.color.set(grabMode==='repel' ? '#ff3b82' : grabMode==='drag' ? '#7c5cff' : 0x00ffcc); }
+    });
+  });
+  if (grabRadiusEl) grabRadiusEl.addEventListener('input', e=>{ grabRadius = parseFloat(e.target.value); syncGrabUI(); if (grabCursorMesh && grabCursorMesh.visible) updateGrabCursor(grabCursorMesh.position); });
+  if (grabStrengthEl) grabStrengthEl.addEventListener('input', e=>{ grabStrength = parseFloat(e.target.value); syncGrabUI(); });
+  document.getElementById('grab-hand-toggle').addEventListener('change', e=>{ handGrabEnabled = e.target.checked; });
+  document.getElementById('btn-grab-reset').addEventListener('click', ()=>{
+    grabOffsets.fill(0);
+    // also need to lerp back quickly
+  });
+  document.getElementById('btn-grab-scatter').addEventListener('click', ()=>{
+    for(let i=0;i<PARTICLE_COUNT;i++){ const i3=i*3; grabOffsets[i3] += (Math.random()-0.5)*12; grabOffsets[i3+1] += (Math.random()-0.5)*12; grabOffsets[i3+2] += (Math.random()-0.5)*12; }
+  });
+  // morph on shape change should preserve sculpt? reset sculpt if user wants clean shape toggle behavior: keep offsets but add small random to highlight
+  const _origShapeClick = null;
+
   // keyboard
   window.addEventListener("keydown", e=>{
     if(e.key.toLowerCase()==="f") document.getElementById("btn-fullscreen").click();
     if(e.key.toLowerCase()==="h") document.getElementById("btn-collapse").click();
     if(e.key.toLowerCase()==="c") document.getElementById("btn-camera").click();
     if(e.key.toLowerCase()==="v") document.getElementById("btn-hide-webcam").click();
+    if(e.key.toLowerCase()==="g") setGrabEnabled(!grabEnabled);
+    if(e.key==="Escape" && grabEnabled && isGrabDragging){ isGrabDragging=false; if(controls) controls.enabled=true; }
   });
 }
 

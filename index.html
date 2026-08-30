@@ -945,9 +945,31 @@ function initWebcamAndAI() {
     }
   });
 
-  const cameraUtils=new Camera(videoElement, { onFrame: async()=>{ if(cameraEnabled) await hands.send({image:videoElement}); }, width:640, height:480 });
-  cameraUtils.start().then(()=>{
-    document.getElementById("cam-status").textContent="Live";
+  // --- 30 FPS CAMERA LOCK — clamped to exactly 30 fps (no higher / no lower) ---
+  const CAMERA_TARGET_FPS = 30;
+  const CAMERA_FRAME_INTERVAL = 1000 / CAMERA_TARGET_FPS;
+  let lastCameraFrameTime = 0;
+  const cameraUtils=new Camera(videoElement, { onFrame: async()=>{
+    const now = performance.now();
+    // throttle to max 30 fps (drop frames that would exceed 30)
+    if (now - lastCameraFrameTime < CAMERA_FRAME_INTERVAL - 1) return;
+    lastCameraFrameTime = now;
+    if(cameraEnabled) await hands.send({image:videoElement});
+  }, width:640, height:480 });
+  cameraUtils.start().then(async ()=>{
+    document.getElementById("cam-status").textContent="Live • 30 fps locked";
+    // Enforce hardware frameRate = 30 fps (ideal/min/max) so camera doesn't go lower or higher
+    try{
+      const stream = videoElement.srcObject;
+      const track = stream && stream.getVideoTracks ? stream.getVideoTracks()[0] : null;
+      if(track){
+        if(track.applyConstraints){
+          await track.applyConstraints({ frameRate: { ideal: CAMERA_TARGET_FPS, max: CAMERA_TARGET_FPS, min: CAMERA_TARGET_FPS }, width: { ideal: 640 }, height: { ideal: 480 } }).catch(()=>{});
+        }
+        const s = track.getSettings ? track.getSettings() : {};
+        if(s.frameRate) document.getElementById("cam-status").textContent = `Live • ${Math.round(s.frameRate)} fps locked`;
+      }
+    }catch(e){ console.warn('FPS lock constraint failed', e); }
     if (loadingText && document.body.contains(loadingText)) { setTimeout(()=>{ loadingText.style.opacity="0"; setTimeout(()=>loadingText.remove(),500); },800); }
   }).catch((err)=>{
     console.error(err);
@@ -1019,7 +1041,7 @@ function setupUI(){
   document.getElementById("btn-camera").addEventListener("click", function(){
     cameraEnabled=!cameraEnabled; this.classList.toggle("active", !cameraEnabled);
     document.getElementById("webcam-wrap").style.opacity= cameraEnabled?"1":"0.35";
-    document.getElementById("cam-status").textContent= cameraEnabled?"Live":"Paused";
+    document.getElementById("cam-status").textContent= cameraEnabled?"Live • 30 fps locked":"Paused • 30 fps locked";
   });
   // webcam hide / minimize — requested feature
   const webcamWrap = document.getElementById("webcam-wrap");

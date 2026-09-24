@@ -12,372 +12,755 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
+    /* ============ LUMINA // SPATIAL PARTICLE ENGINE — holographic command interface ============ */
     :root {
+      /* dynamic particle accent (set by color picker — contextual lighting follows it) */
       --accent: #00ffcc;
       --accent-2: #7c5cff;
-      --bg: #070709;
-      --panel: rgba(18,18,20,0.72);
-      --panel-border: rgba(255,255,255,0.08);
-      --text: #f5f5f7;
-      --muted: #a1a1aa;
-      --radius: 20px;
+      /* background layers */
+      --bg-0: #04060a;
+      --bg-1: #070c12;
+      --bg-grid: rgba(125, 211, 252, 0.05);
+      /* panel surfaces */
+      --panel: rgba(9, 14, 20, 0.78);
+      --panel-solid: #0a1118;
+      --panel-inset: rgba(125, 211, 252, 0.05);
+      /* accents */
+      --ice: #8fd8ff;
+      --cyan: #46e6ff;
+      --violet: #8b7bff;
+      --text: #eef4f8;
+      --muted: #8b98a5;
+      --faint: #5b6a77;
+      /* states */
+      --ok: #46e6c8;
+      --warn: #ffb454;
+      --err: #ff5d5d;
+      --idle: #6b7885;
+      /* borders + glow */
+      --line: rgba(143, 216, 255, 0.14);
+      --line-bright: rgba(143, 216, 255, 0.38);
+      --glow: 0 0 12px rgba(70, 230, 255, 0.25);
+      /* type */
+      --font-ui: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+      --font-tech: 'JetBrains Mono', ui-monospace, monospace;
+      /* spacing + radius */
+      --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px;
+      --r-sm: 6px; --r-md: 10px; --r-lg: 14px;
+      /* shadows */
+      --shadow-float: 0 18px 50px rgba(0, 0, 0, 0.55);
+      --shadow-edge: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      /* motion */
+      --dur-fast: 160ms; --dur-med: 280ms; --dur-slow: 450ms;
+      --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+      --ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
+      /* layers */
+      --z-stage: 2; --z-dock: 20; --z-sensor: 15; --z-rail: 30; --z-toast: 40;
+      --z-modal: 60; --z-boot: 100;
     }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    html { overflow: clip; } /* fullscreen stage — floating UI must never page-scroll */
     body {
-      margin: 0; overflow: hidden; background: var(--bg);
-      font-family: 'Inter', -apple-system, sans-serif; color: var(--text);
+      margin: 0; overflow: hidden; background: var(--bg-0);
+      font-family: var(--font-ui); color: var(--text);
       -webkit-font-smoothing: antialiased;
     }
-    /* gradient backdrop */
+    /* deep graphite backdrop + restrained technical grid + accent aura (follows particle color) */
     body::before {
       content:""; position: fixed; inset:0; z-index:0;
       background:
-        radial-gradient(800px 600px at 20% 10%, rgba(124,92,255,0.18), transparent 60%),
-        radial-gradient(700px 500px at 85% 85%, rgba(0,255,204,0.14), transparent 60%),
-        radial-gradient(600px 600px at 50% 50%, rgba(255,255,255,0.03), transparent 70%);
+        radial-gradient(900px 500px at 50% 115%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 65%),
+        radial-gradient(700px 460px at 88% -10%, rgba(139, 123, 255, 0.10), transparent 60%),
+        radial-gradient(760px 520px at 8% 8%, rgba(70, 230, 255, 0.07), transparent 60%),
+        linear-gradient(var(--bg-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px),
+        var(--bg-0);
+      background-size: auto, auto, auto, 44px 44px, 44px 44px, auto;
       pointer-events: none;
     }
+    body::after {
+      content:""; position: fixed; inset:0; z-index:0; pointer-events:none;
+      background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,0.5) 100%);
+    }
     #canvas-container { position: absolute; inset:0; z-index: 1; }
+    #canvas-container canvas { display: block; }
+    ::selection { background: rgba(70, 230, 255, 0.3); }
+    :focus { outline: none; }
+    :focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; border-radius: var(--r-sm); }
 
-    /* Header */
+    /* ---- Top command rail ---- */
     .header {
-      position: absolute; top:0; left:0; right:0; z-index: 20;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 20px; pointer-events: none;
+      position: absolute; top: 12px; left: 0; right: 0; z-index: var(--z-rail);
+      display: flex; justify-content: center; pointer-events: none; padding: 0 12px;
     }
-    .brand {
-      display: flex; align-items: center; gap:12px; pointer-events: auto;
+    .rail {
+      pointer-events: auto;
+      display: flex; align-items: center; gap: 0;
+      width: min(1240px, 100%); min-height: 54px;
+      background: var(--panel); backdrop-filter: blur(14px);
+      border: 1px solid var(--line); border-radius: var(--r-md);
+      box-shadow: var(--shadow-float), var(--shadow-edge);
+      padding: 0 10px; position: relative;
     }
-    .brand-mark {
-      width: 36px; height: 36px; border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      display: grid; place-items: center; font-weight: 700; font-size: 16px; color:#000;
-      box-shadow: 0 4px 20px rgba(0,255,204,0.3);
+    /* bright corner details */
+    .rail::before, .rail::after,
+    .dock::before, .dock::after,
+    .sensor::before, .sensor::after {
+      content: ""; position: absolute; width: 14px; height: 14px; pointer-events: none;
     }
-    .brand-text h1 { margin:0; font-size: 15px; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
-    .brand-text p { margin:2px 0 0; font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
-    .header-actions { display: flex; gap:8px; pointer-events: auto; }
+    .rail::before { top: -1px; left: -1px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); border-top-left-radius: var(--r-md); }
+    .rail::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan); border-bottom-right-radius: var(--r-md); }
+    .dock::before { top: -1px; left: -1px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); border-top-left-radius: var(--r-lg); }
+    .dock::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan); border-bottom-right-radius: var(--r-lg); }
+    .sensor::before { top: -1px; left: -1px; border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan); border-top-left-radius: var(--r-lg); }
+    .sensor::after { bottom: -1px; right: -1px; border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan); border-bottom-right-radius: var(--r-lg); }
+    .rail-system { display: flex; align-items: center; gap: 10px; padding-right: 12px; }
+    .sys-mark {
+      width: 32px; height: 32px; flex-shrink: 0; display: grid; place-items: center;
+      border: 1px solid var(--line-bright); border-radius: 8px; color: var(--cyan);
+      background: rgba(70, 230, 255, 0.06);
+    }
+    .sys-mark svg { width: 20px; height: 20px; }
+    .sys-title { line-height: 1.25; white-space: nowrap; }
+    .sys-title strong { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.14em; }
+    .sys-title span { display: block; font-family: var(--font-tech); font-size: 9px; letter-spacing: 0.18em; color: var(--muted); }
+    .rail-sep { width: 1px; align-self: stretch; margin: 10px 0; background: var(--line); flex-shrink: 0; }
+    .rail-stat { display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 0 12px; min-width: 0; }
+    .rail-stat .k { font-family: var(--font-tech); font-size: 8.5px; letter-spacing: 0.2em; color: var(--faint); white-space: nowrap; }
+    .rail-stat .v { font-family: var(--font-tech); font-size: 12px; letter-spacing: 0.06em; color: var(--text); white-space: nowrap; }
+    .rail-stat .v.hot { color: var(--cyan); }
+    .rail-link { display: flex; align-items: center; gap: 7px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--idle); flex-shrink: 0; transition: background var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+    .status-dot.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+    .status-dot.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+    .status-dot.err { background: var(--err); box-shadow: 0 0 8px var(--err); }
+    .status-dot.live { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: dot-breathe 2.2s ease-in-out infinite; }
+    @keyframes dot-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+    .rail-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; padding-left: 12px; }
+    /* icon buttons — coherent stroke-icon control set */
     .icon-btn {
-      width: 38px; height: 38px; border-radius: 12px; border:1px solid var(--panel-border);
-      background: var(--panel); backdrop-filter: blur(16px); color: white;
-      display: grid; place-items: center; cursor: pointer; font-size: 15px;
-      transition: all .2s;
+      width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line);
+      background: transparent; color: var(--muted);
+      display: inline-grid; place-items: center; cursor: pointer; padding: 0;
+      transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
     }
-    .icon-btn:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-1px); background: rgba(28,28,30,0.9); }
-    .icon-btn.active { border-color: var(--accent); color: var(--accent); }
+    .icon-btn svg { width: 17px; height: 17px; }
+    .icon-btn:hover { color: var(--text); border-color: var(--line-bright); background: rgba(143, 216, 255, 0.07); }
+    .icon-btn:active { transform: scale(0.93); }
+    .icon-btn.active { color: var(--cyan); border-color: rgba(70, 230, 255, 0.5); background: rgba(70, 230, 255, 0.1); }
+    .icon-btn.warn-active { color: var(--warn); border-color: rgba(255, 180, 84, 0.5); background: rgba(255, 180, 84, 0.1); }
+    /* text action buttons */
+    .btn-line {
+      display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px;
+      border-radius: 8px; border: 1px solid var(--line); background: transparent;
+      color: var(--muted); font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+      cursor: pointer; white-space: nowrap;
+      transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+    }
+    .btn-line svg { width: 15px; height: 15px; }
+    .btn-line:hover { color: var(--text); border-color: var(--line-bright); background: rgba(143, 216, 255, 0.07); }
+    .btn-line.active { color: var(--cyan); border-color: rgba(70, 230, 255, 0.5); background: rgba(70, 230, 255, 0.1); }
 
-    /* Left Panel */
+    /* ---- Control dock ---- */
     .panel {
-      position: absolute; top: 72px; left: 20px; z-index: 10;
-      width: 340px; max-height: calc(100vh - 88px);
-      background: var(--panel); backdrop-filter: blur(24px) saturate(1.4);
-      border:1px solid var(--panel-border); border-radius: var(--radius);
-      box-shadow: 0 16px 64px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06);
+      position: absolute; top: 80px; left: 16px; z-index: var(--z-dock);
+      width: 322px; max-height: calc(100vh - 100px);
+      background: var(--panel); backdrop-filter: blur(14px);
+      border: 1px solid var(--line); border-radius: var(--r-lg);
+      box-shadow: var(--shadow-float), var(--shadow-edge);
       display: flex; flex-direction: column; overflow: hidden;
     }
-    .panel-scroll { overflow-y: auto; padding: 20px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+    .panel-scroll { overflow-y: auto; padding: 14px 14px 16px; scrollbar-width: thin; scrollbar-color: rgba(143,216,255,0.2) transparent; }
     .panel-scroll::-webkit-scrollbar { width: 4px; }
-    .panel-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
-    .panel-header h2 { margin:0; font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-    .collapse-btn { width:28px; height:28px; border-radius:8px; border:1px solid var(--panel-border); background: rgba(255,255,255,0.06); color: var(--muted); cursor:pointer; display:grid; place-items:center; }
-    .panel.collapsed { width: 52px; height: 52px; border-radius: 16px; }
-    .panel.collapsed .panel-scroll, .panel.collapsed .panel-header h2 { display:none; }
-    .section { margin-bottom: 22px; }
-    .section-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; display:flex; align-items:center; gap:8px; }
-    .section-label span { width:6px; height:6px; border-radius:50%; background: var(--accent); box-shadow:0 0 8px var(--accent); }
-
-    /* Shape cards */
-    .shape-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap:8px; max-height: 264px; overflow-y: auto; padding-right: 2px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
-    .shape-grid::-webkit-scrollbar { width: 4px; }
-    .shape-grid::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-    @media (max-width: 768px) { .shape-grid { grid-template-columns: repeat(4, 1fr); } }
-    .shape-card {
-      position: relative; padding: 14px 8px 10px; border-radius: 14px;
-      background: rgba(255,255,255,0.06); border:1px solid transparent;
-      cursor: pointer; text-align: center; transition: all .2s;
+    .panel-scroll::-webkit-scrollbar-thumb { background: rgba(143,216,255,0.2); border-radius: 4px; }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .panel-header h2 { margin: 0; font-family: var(--font-tech); font-size: 10px; font-weight: 500; letter-spacing: 0.24em; color: var(--muted); }
+    .collapse-btn { width:28px; height:28px; border-radius:8px; border:1px solid var(--line); background: transparent; color: var(--muted); cursor:pointer; display:grid; place-items:center; transition: color var(--dur-fast), border-color var(--dur-fast); }
+    .collapse-btn:hover { color: var(--text); border-color: var(--line-bright); }
+    .collapse-btn svg { width: 14px; height: 14px; }
+    /* animated segmented tab control (sliding indicator) */
+    .dock-tabs { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 3px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: rgba(4, 8, 12, 0.6); }
+    .dock-tab {
+      position: relative; z-index: 1; border: 0; background: transparent; cursor: pointer;
+      font-family: var(--font-tech); font-size: 10px; font-weight: 500; letter-spacing: 0.22em; text-indent: 0.22em;
+      color: var(--muted); padding: 9px 0; border-radius: 7px; text-align: center;
+      transition: color var(--dur-fast) var(--ease-out);
     }
-    .shape-card:hover { background: rgba(255,255,255,0.09); transform: translateY(-1px); }
-    .shape-card.active { background: linear-gradient(135deg, rgba(0,255,204,0.15), rgba(124,92,255,0.15)); border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,255,204,0.12); }
-    .shape-card .icon { font-size: 22px; margin-bottom: 6px; }
-    .shape-card .name { font-size: 11px; font-weight: 600; letter-spacing: 0.02em; }
-    .shape-card .count { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+    .dock-tab:hover { color: var(--text); }
+    .dock-tab[aria-selected="true"] { color: #06121a; font-weight: 700; }
+    .dock-tab-ind {
+      position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; z-index: 0;
+      border-radius: 7px; background: var(--cyan);
+      box-shadow: 0 0 14px rgba(70, 230, 255, 0.45);
+    }
+    .dock-panel { min-height: 320px; }
+    .dock-panel[hidden] { display: none; }
+    /* collapsed dock → slim status strip */
+    .panel.collapsed { width: 60px; }
+    .panel.collapsed .panel-scroll, .panel.collapsed .dock-tabs-row { display: none; }
+    .dock-mini { display: none; flex-direction: column; align-items: center; gap: 10px; padding: 12px 0; }
+    .panel.collapsed .dock-mini { display: flex; }
+    .dock-mini .mini-shape { color: var(--cyan); display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line-bright); border-radius: 9px; background: rgba(70,230,255,0.07); }
+    .dock-mini .mini-shape svg { width: 18px; height: 18px; }
+    .dock-mini .status-dot { width: 7px; height: 7px; }
+    .section { margin-bottom: 18px; }
+    .section:last-child { margin-bottom: 0; }
+    .section-label { font-family: var(--font-tech); font-size: 9.5px; font-weight: 500; letter-spacing: 0.24em; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .section-label::before { content: ""; width: 14px; height: 1px; background: var(--cyan); opacity: 0.7; }
+    .section-label .tag { margin-left: auto; color: var(--faint); letter-spacing: 0.12em; }
+    .tech-div { height: 1px; background: linear-gradient(90deg, transparent, var(--line), transparent); margin: 14px 0; }
 
-    /* Color */
+    /* ---- Particle matrix (model library) ---- */
+    .matrix-search { position: relative; margin-bottom: 10px; }
+    .matrix-search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--faint); pointer-events: none; }
+    .matrix-search input {
+      width: 100%; height: 34px; padding: 0 10px 0 30px; background: rgba(4,8,12,0.6);
+      border: 1px solid var(--line); border-radius: 8px; color: var(--text);
+      font-family: var(--font-tech); font-size: 11px; letter-spacing: 0.1em;
+    }
+    .matrix-search input::placeholder { color: var(--faint); }
+    .matrix-search input:focus { border-color: var(--cyan); }
+    .shape-grid { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 296px; overflow-y: auto; padding: 3px; scrollbar-width: thin; scrollbar-color: rgba(143,216,255,0.2) transparent; }
+    .shape-grid::-webkit-scrollbar { width: 4px; }
+    .shape-grid::-webkit-scrollbar-thumb { background: rgba(143,216,255,0.2); border-radius: 4px; }
+    .shape-card {
+      position: relative; padding: 10px 4px 8px; border-radius: 9px;
+      background: rgba(143, 216, 255, 0.04); border: 1px solid rgba(143, 216, 255, 0.09);
+      cursor: pointer; text-align: center; color: var(--text);
+      font-family: inherit; width: 100%;
+      transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+    }
+    .shape-card:hover { background: rgba(143, 216, 255, 0.09); border-color: var(--line-bright); }
+    .shape-card:active { transform: scale(0.96); }
+    .shape-card .icon { display: grid; place-items: center; margin-bottom: 5px; color: var(--muted); transition: color var(--dur-fast); }
+    .shape-card .icon svg { width: 20px; height: 20px; }
+    .shape-card:hover .icon, .shape-card.active .icon { color: var(--cyan); }
+    .shape-card .name { font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+    .shape-card .count { font-size: 9px; color: var(--faint); font-family: var(--font-tech); letter-spacing: 0.08em; margin-top: 1px; }
+    .shape-card.active { background: rgba(70, 230, 255, 0.1); }
+    .shape-card.active .name { color: var(--cyan); }
+    /* luminous selection frame that travels between models */
+    #shape-frame {
+      position: absolute; z-index: 2; pointer-events: none; opacity: 0;
+      border: 1px solid var(--cyan); border-radius: 10px;
+      box-shadow: 0 0 12px rgba(70, 230, 255, 0.35), inset 0 0 8px rgba(70, 230, 255, 0.12);
+    }
+    #shape-frame::before, #shape-frame::after { content: ""; position: absolute; width: 8px; height: 8px; }
+    #shape-frame::before { top: -1px; left: -1px; border-top: 2px solid #fff; border-left: 2px solid #fff; border-top-left-radius: 9px; }
+    #shape-frame::after { bottom: -1px; right: -1px; border-bottom: 2px solid #fff; border-right: 2px solid #fff; border-bottom-right-radius: 9px; }
+
+    /* ---- Visual calibration ---- */
     .color-row { display:flex; align-items:center; gap:12px; }
     .palette { display:flex; gap:8px; flex-wrap: wrap; }
-    .swatch { width:32px; height:32px; border-radius:50%; border:2px solid transparent; cursor:pointer; transition:.2s; position:relative; }
-    .swatch.active { border-color:white; box-shadow: 0 0 0 3px rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.3); transform: scale(1.08); }
-    .swatch.active::after { content:"✓"; position:absolute; inset:0; display:grid; place-items:center; font-size:12px; color:white; text-shadow:0 1px 4px rgba(0,0,0,0.8); }
-    .color-custom { display:flex; align-items:center; gap:10px; margin-top:10px; padding:10px; border-radius:12px; background: rgba(255,255,255,0.05); border:1px solid var(--panel-border); }
-    input[type="color"] { -webkit-appearance:none; border:none; width:36px; height:36px; border-radius:50%; cursor:pointer; background:none; padding:0; }
-    input[type="color"]::-webkit-color-swatch { border:2px solid rgba(255,255,255,0.5); border-radius:50%; }
-    #color-hex { font-family: 'JetBrains Mono', monospace; font-size:13px; color: var(--text); }
-    .slider-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-    .slider-row span { font-size:11px; color:var(--muted); }
-    .slider-row strong { font-size:12px; font-family:'JetBrains Mono',monospace; color: var(--accent); }
-    input[type="range"] { width:100%; accent-color: var(--accent); height:4px; }
-
-    /* Status */
-    .status-card {
-      border-radius: 16px; padding:14px; background: rgba(255,255,255,0.05);
-      border:1px solid var(--panel-border); position:relative; overflow:hidden;
+    .swatch { width:30px; height:30px; border-radius:8px; border:1px solid rgba(255,255,255,0.15); cursor:pointer; transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast); position:relative; padding: 0; }
+    .swatch:hover { transform: translateY(-1px); }
+    .swatch.active { box-shadow: 0 0 0 2px var(--bg-0), 0 0 0 3.5px var(--cyan), 0 0 12px rgba(70,230,255,0.4); }
+    .color-custom { display:flex; align-items:center; gap:10px; margin-top:10px; padding:10px; border-radius:10px; background: rgba(4,8,12,0.5); border:1px solid var(--line); }
+    .color-preview { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--line-bright); background: var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent); flex-shrink: 0; }
+    input[type="color"] { -webkit-appearance:none; appearance: none; border:none; width:36px; height:28px; border-radius:6px; cursor:pointer; background:none; padding:0; }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border:1px solid var(--line-bright); border-radius:6px; }
+    input[type="color"]::-moz-color-swatch { border:1px solid var(--line-bright); border-radius:6px; }
+    #color-hex { font-family: var(--font-tech); font-size:12px; color: var(--text); letter-spacing: 0.06em; }
+    .slider-block { margin-top: 12px; }
+    .slider-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+    .slider-row span { font-family: var(--font-tech); font-size: 9.5px; letter-spacing: 0.2em; color: var(--muted); }
+    .slider-row strong { font-size:12px; font-family: var(--font-tech); color: var(--cyan); font-weight: 500; }
+    .slider-track { position: relative; padding-bottom: 8px; }
+    /* technical scale marks under each slider */
+    .slider-track::after {
+      content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+      background: repeating-linear-gradient(90deg, var(--faint) 0 1px, transparent 1px 10%);
+      opacity: 0.5;
     }
-    .status-card::before { content:""; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); opacity:0.8; }
-    .status-card.active { background: rgba(0,255,204,0.08); border-color: rgba(0,255,204,0.25); }
-    .status-card.active::before { opacity:1; }
-    .hand-dots { display:flex; gap:8px; margin-bottom:10px; }
-    .dot { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:600; padding:6px 10px; border-radius:20px; background: rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.06); }
-    .dot i { width:8px; height:8px; border-radius:50%; background: #555; }
-    .dot.on i { background: var(--accent); box-shadow:0 0 8px var(--accent); }
-    .dot.fist i { background: #ff8a00; box-shadow:0 0 8px #ff8a00; }
-    .meter { height:6px; background: rgba(255,255,255,0.08); border-radius: 10px; overflow:hidden; margin-top:8px; }
-    .meter-fill { height:100%; width:50%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius:10px; transition: width .15s; }
-    .status-text { font-size:12px; line-height:1.5; color: #d4d4d8; min-height: 32px; }
-    .status-text strong { color: var(--accent); }
+    input[type="range"] { -webkit-appearance: none; appearance: none; width:100%; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+    input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: linear-gradient(90deg, rgba(70,230,255,0.55), rgba(70,230,255,0.15)); border-radius: 2px; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; margin-top: -5.5px; border-radius: 4px; background: #06121a; border: 1.5px solid var(--cyan); box-shadow: 0 0 8px rgba(70,230,255,0.5); }
+    input[type="range"]::-moz-range-track { height: 3px; background: rgba(70,230,255,0.3); border-radius: 2px; }
+    input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 4px; background: #06121a; border: 1.5px solid var(--cyan); }
+    .seg-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
+    .seg-label { font-family: var(--font-tech); font-size: 9.5px; letter-spacing: 0.2em; color: var(--muted); }
+    /* Origin-inspired switch */
+    .switch { position: relative; width: 40px; height: 22px; border-radius: 20px; border: 1px solid var(--line-bright); background: rgba(4,8,12,0.7); cursor: pointer; padding: 0; transition: background var(--dur-fast), border-color var(--dur-fast); flex-shrink: 0; }
+    .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--muted); transition: transform var(--dur-med) var(--ease-snap), background var(--dur-fast); }
+    .switch[aria-checked="true"] { background: rgba(70, 230, 255, 0.25); border-color: var(--cyan); }
+    .switch[aria-checked="true"]::after { transform: translateX(18px); background: var(--cyan); box-shadow: 0 0 8px rgba(70,230,255,0.7); }
 
-    /* Webcam */
-    .webcam-wrap {
-      position: absolute; bottom: 20px; right: 20px; z-index: 10;
-      width: 260px; border-radius: 18px; overflow: hidden;
-      background: #000; border:1px solid rgba(255,255,255,0.1);
-      box-shadow: 0 16px 48px rgba(0,0,0,0.6); backdrop-filter: blur(12px);
-      transition: transform .25s, opacity .25s;
+    /* ---- Gesture link status ---- */
+    .status-card {
+      border-radius: var(--r-md); padding: 12px; background: rgba(4,8,12,0.5);
+      border: 1px solid var(--line); position: relative; overflow: hidden;
+    }
+    .status-card::before { content:""; position:absolute; top:0; left:0; right:0; height:2px; background: linear-gradient(90deg, var(--cyan), var(--violet)); opacity:0.5; }
+    .status-card.active { border-color: rgba(70,230,200,0.4); }
+    .status-card.active::before { opacity:1; }
+    .hand-dots { display:flex; gap:6px; margin-bottom:10px; }
+    .dot { display:flex; align-items:center; gap:6px; font-family: var(--font-tech); font-size: 9.5px; font-weight: 500; letter-spacing: 0.1em; padding:6px 9px; border-radius:7px; background: rgba(143,216,255,0.05); border:1px solid var(--line); color: var(--muted); }
+    .dot i { width:7px; height:7px; border-radius:50%; background: var(--idle); flex-shrink: 0; }
+    .dot.on { color: var(--text); border-color: rgba(70,230,200,0.4); }
+    .dot.on i { background: var(--ok); box-shadow:0 0 8px var(--ok); }
+    .dot.fist { color: var(--text); border-color: rgba(255,180,84,0.45); }
+    .dot.fist i { background: var(--warn); box-shadow:0 0 8px var(--warn); }
+    .meter { height:5px; background: rgba(143,216,255,0.1); border-radius: 4px; overflow:hidden; margin-top:8px; }
+    .meter-fill { height:100%; width:50%; background: linear-gradient(90deg, var(--cyan), var(--violet)); border-radius:4px; transition: width .15s; }
+    .status-text { font-size:12px; line-height:1.55; color: #c9d4dc; min-height: 36px; }
+    .status-text strong { color: var(--cyan); font-weight: 600; }
+    .dock-btn-row { display:flex; gap:8px; margin-top:10px; }
+    .dock-btn-row .btn-line, .dock-btn-row .icon-btn { flex: 1; justify-content: center; }
+    .dock-btn-row .icon-btn { width: auto; height: 34px; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; font-family: var(--font-ui); gap: 6px; }
+    .dock-btn-row .icon-btn svg { width: 15px; height: 15px; }
+
+    /* ---- Sculpt field ---- */
+    .grab-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:10px; background: rgba(4,8,12,0.5); border:1px solid var(--line); margin-bottom:10px; }
+    .grab-toggle-row.active { border-color: rgba(139,123,255,0.55); background: rgba(139,123,255,0.08); }
+    .grab-title { font-size:11.5px; font-weight:600; letter-spacing: 0.06em; }
+    .grab-sub { font-size:10.5px; color:var(--muted); margin-top: 1px; }
+    .toggle-switch { width:44px; height:24px; border-radius:20px; background: rgba(143,216,255,0.1); position:relative; cursor:pointer; transition:.2s; border:1px solid var(--line-bright); flex-shrink:0; padding: 0; }
+    .toggle-switch.on { background: rgba(139,123,255,0.35); border-color: var(--violet); }
+    .toggle-switch::after { content:""; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#c9d4dc; transition:.2s; }
+    .toggle-switch.on::after { transform: translateX(20px); background: #fff; box-shadow: 0 0 8px rgba(139,123,255,0.8); }
+    .grab-modes { display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; margin-bottom:10px; }
+    .grab-mode-btn { display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 4px; border-radius:9px; border:1px solid var(--line); background: rgba(143,216,255,0.04); color:var(--muted); font-size:10px; font-weight:700; letter-spacing: 0.1em; cursor:pointer; transition:.2s; font-family: var(--font-ui); }
+    .grab-mode-btn svg { width: 14px; height: 14px; }
+    .grab-mode-btn:hover { color: var(--text); border-color: var(--line-bright); }
+    .grab-mode-btn.active { background: rgba(139,123,255,0.14); border-color: var(--violet); color: #fff; box-shadow: 0 0 10px rgba(139,123,255,0.25); }
+    .grab-cursor { position:absolute; inset:0; pointer-events:none; z-index:2; }
+    .check-line { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); margin-bottom:10px; cursor:pointer; }
+    .check-line input { accent-color: var(--cyan); width: 14px; height: 14px; }
+
+    .sensor {
+      position: absolute; bottom: 20px; right: 20px; z-index: var(--z-sensor);
+      width: 252px; border-radius: var(--r-lg); overflow: hidden;
+      background: var(--panel); backdrop-filter: blur(14px);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-float), var(--shadow-edge);
+      transition: opacity var(--dur-med) var(--ease-out);
     }
     .webcam-wrap.hidden { display: none !important; }
     .webcam-wrap.minimized #webcam, .webcam-wrap.minimized #overlay, .webcam-wrap.minimized .webcam-footer { display: none; }
-    .webcam-wrap.minimized { width: 260px; }
+    .webcam-wrap.minimized { width: 252px; }
     #btn-show-webcam {
-      position: absolute; bottom: 20px; right: 20px; z-index: 10;
+      position: absolute; bottom: 20px; right: 20px; z-index: var(--z-sensor);
       display: none; align-items: center; gap:8px;
-      padding: 10px 14px; border-radius: 12px;
-      background: var(--panel); backdrop-filter: blur(16px);
-      border: 1px solid var(--panel-border); color: white;
-      font-size: 12px; font-weight: 600; cursor: pointer;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      padding: 10px 14px; border-radius: 10px;
+      background: var(--panel); backdrop-filter: blur(14px);
+      border: 1px solid var(--line); color: var(--text);
+      font-family: var(--font-tech); font-size: 10px; letter-spacing: 0.16em; cursor: pointer;
+      box-shadow: var(--shadow-float);
     }
     #btn-show-webcam.visible { display: flex; }
+    #btn-show-webcam svg { width: 15px; height: 15px; color: var(--cyan); }
     .webcam-controls { display:flex; gap:6px; align-items:center; }
     .wcam-btn {
-      width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.08); color: var(--muted); cursor: pointer;
-      display: grid; place-items: center; font-size: 11px; line-height: 1;
+      width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--line);
+      background: transparent; color: var(--muted); cursor: pointer;
+      display: grid; place-items: center;
+      transition: color var(--dur-fast), border-color var(--dur-fast);
     }
-    .wcam-btn:hover { background: rgba(255,255,255,0.14); color: white; }
+    .wcam-btn:hover { color: var(--text); border-color: var(--line-bright); }
+    .wcam-btn svg { width: 13px; height: 13px; }
     .webcam-header {
       display:flex; align-items:center; justify-content:space-between;
-      padding:10px 12px; background: rgba(18,18,20,0.9); border-bottom:1px solid rgba(255,255,255,0.06);
-      font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--muted);
+      padding:10px 12px; background: rgba(4,8,12,0.65); border-bottom:1px solid var(--line);
+      font-family: var(--font-tech); font-size: 9.5px; letter-spacing: 0.2em; color: var(--muted);
     }
-    .live-dot { width:8px; height:8px; border-radius:50%; background:#ff3b30; box-shadow:0 0 8px #ff3b30; animation: pulse 1.6s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-    #webcam { width:100%; height:180px; object-fit:cover; transform: scaleX(-1); display:block; background:#000; }
-    #overlay { position:absolute; top:35px; left:0; width:100%; height:180px; pointer-events:none; transform: scaleX(-1); }
+    .live-dot { width:8px; height:8px; border-radius:50%; background: var(--err); box-shadow:0 0 8px var(--err); animation: pulse 1.6s infinite; flex-shrink: 0; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+    #webcam { width:100%; height:170px; object-fit:cover; transform: scaleX(-1); display:block; background:#000; }
+    #overlay { position:absolute; top:37px; left:0; width:100%; height:170px; pointer-events:none; transform: scaleX(-1); }
     .webcam-footer {
-      display:flex; gap:6px; padding:8px; background: rgba(18,18,20,0.9);
-      font-size:11px; color: var(--muted); align-items:center; justify-content:space-between;
+      display:flex; gap:6px; padding:8px 12px; background: rgba(4,8,12,0.65);
+      font-family: var(--font-tech); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); align-items:center; justify-content:space-between;
     }
+    .webcam-footer .hands-chip { color: var(--cyan); }
 
-    /* Bottom hint */
+    /* ---- Bottom hint strip ---- */
     .hint-bar {
-      position: absolute; bottom: 20px; left:50%; transform:translateX(-50%); z-index:10;
-      display:flex; gap:8px; padding:8px; border-radius: 16px;
-      background: rgba(18,18,20,0.75); backdrop-filter: blur(16px);
-      border:1px solid var(--panel-border); box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      font-size:11px; color: var(--muted); white-space: nowrap;
+      position: absolute; bottom: 16px; left:50%; transform:translateX(-50%); z-index: var(--z-stage);
+      display:flex; gap:6px; padding:6px; border-radius: 10px;
+      background: rgba(9,14,20,0.7); backdrop-filter: blur(12px);
+      border:1px solid var(--line);
+      font-family: var(--font-tech); font-size: 9.5px; letter-spacing: 0.08em; color: var(--muted); white-space: nowrap;
     }
-    .hint { display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:10px; background: rgba(255,255,255,0.06); }
-    .hint kbd { font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 6px; border-radius:6px; background: rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.1); color: var(--text); }
+    .hint { display:flex; align-items:center; gap:6px; padding:5px 9px; border-radius:7px; background: rgba(143,216,255,0.05); }
+    .hint kbd { font-family: var(--font-tech); font-size:9px; padding:2px 6px; border-radius:5px; background: rgba(143,216,255,0.1); border:1px solid var(--line); color: var(--text); }
 
-    /* Loading */
+    /* ---- Loading ---- */
     #loading {
       position: absolute; inset:0; z-index: 50; display:grid; place-items:center;
-      background: radial-gradient(600px 400px at 50% 50%, rgba(124,92,255,0.15), transparent 70%), rgba(7,7,9,0.88);
+      background: radial-gradient(600px 400px at 50% 50%, rgba(139,123,255,0.12), transparent 70%), rgba(4,6,10,0.9);
       backdrop-filter: blur(8px); transition: opacity .5s;
     }
     .loading-card {
-      text-align:center; padding:32px; border-radius:20px; background: var(--panel);
-      border:1px solid var(--panel-border); box-shadow: 0 16px 64px rgba(0,0,0,0.5);
+      text-align:center; padding:32px 40px; border-radius: var(--r-lg); background: var(--panel);
+      border:1px solid var(--line); box-shadow: var(--shadow-float);
     }
     .spinner {
-      width:44px; height:44px; border:3px solid rgba(255,255,255,0.1);
-      border-top-color: var(--accent); border-radius:50%; margin:0 auto 16px; animation: spin 0.9s linear infinite;
+      width:44px; height:44px; border:2px solid rgba(143,216,255,0.15);
+      border-top-color: var(--cyan); border-radius:50%; margin:0 auto 16px; animation: spin 0.9s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .loading-card h3 { margin:0 0 6px; font-size:15px; font-weight:600; }
+    .loading-card h3 { margin:0 0 6px; font-size:14px; font-weight:600; letter-spacing: 0.12em; }
     .loading-card p { margin:0; font-size:12px; color:var(--muted); }
 
-    /* Grab mode */
-    .grab-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:12px; background: rgba(255,255,255,0.05); border:1px solid var(--panel-border); margin-bottom:10px; }
-    .grab-toggle-row.active { border-color: var(--accent); background: rgba(0,255,204,0.08); }
-    .toggle-switch { width:44px; height:26px; border-radius:20px; background: rgba(255,255,255,0.15); position:relative; cursor:pointer; transition:.2s; border:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
-    .toggle-switch.on { background: var(--accent); border-color: var(--accent); }
-    .toggle-switch::after { content:""; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:white; transition:.2s; box-shadow:0 2px 6px rgba(0,0,0,0.3); }
-    .toggle-switch.on::after { transform: translateX(18px); }
-    .grab-modes { display:flex; gap:6px; margin-bottom:10px; }
-    .grab-mode-btn { flex:1; padding:8px 6px; border-radius:10px; border:1px solid var(--panel-border); background: rgba(255,255,255,0.06); color:var(--muted); font-size:11px; font-weight:600; cursor:pointer; text-align:center; transition:.2s; }
-    .grab-mode-btn.active { background: linear-gradient(135deg, rgba(0,255,204,0.18), rgba(124,92,255,0.18)); border-color: var(--accent); color:white; box-shadow:0 0 0 2px rgba(0,255,204,0.12); }
-    .grab-cursor { position:absolute; inset:0; pointer-events:none; z-index:2; }
-
-    @media (max-width: 768px) {
-      .panel { width: calc(100vw - 24px); left:12px; top:64px; max-height: 46vh; }
-      .webcam-wrap { width: 150px; bottom: 70px; right:12px; }
-      #webcam, #overlay { height:110px; }
-      .hint-bar { bottom:12px; font-size:10px; padding:6px; gap:6px; }
-      .hint { padding:4px 8px; }
+    /* ---- Central stage overlays (non-interactive framing) ---- */
+    .stage-ui { position: absolute; inset: 0; z-index: var(--z-stage); pointer-events: none; }
+    .stage-corner { position: absolute; width: 26px; height: 26px; border-color: rgba(143,216,255,0.35); border-style: solid; }
+    .stage-corner.tl { top: 78px; left: 18px; border-width: 1px 0 0 1px; }
+    .stage-corner.tr { top: 78px; right: 18px; border-width: 1px 1px 0 0; }
+    .stage-corner.bl { bottom: 18px; left: 18px; border-width: 0 0 1px 1px; }
+    .stage-corner.br { bottom: 18px; right: 18px; border-width: 0 1px 1px 0; }
+    .stage-reticle {
+      position: absolute; top: 50%; left: 50%; width: min(58vmin, 460px); height: min(58vmin, 460px);
+      transform: translate(-50%, -50%); opacity: 0.5;
     }
+    .stage-reticle svg { width: 100%; height: 100%; }
+    .reticle-spin { transform-origin: center; animation: reticle-rotate 90s linear infinite; }
+    @keyframes reticle-rotate { to { transform: rotate(360deg); } }
+    .stage-morph {
+      position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%);
+      font-family: var(--font-tech); font-size: 10px; letter-spacing: 0.3em; text-indent: 0.3em;
+      color: var(--cyan); opacity: 0.9; white-space: nowrap;
+      text-shadow: 0 0 12px rgba(70,230,255,0.6);
+    }
+    .stage-morph .dim { color: var(--faint); text-shadow: none; }
+    .stage-scan {
+      position: absolute; left: 8%; right: 8%; top: 50%; height: 1px; opacity: 0;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      box-shadow: 0 0 18px rgba(70,230,255,0.8);
+    }
+    .stage-telemetry {
+      position: absolute; left: 18px; bottom: 18px;
+      font-family: var(--font-tech); font-size: 9.5px; letter-spacing: 0.14em; color: var(--faint);
+      display: flex; gap: 14px;
+    }
+    .stage-telemetry b { color: var(--muted); font-weight: 500; }
+
+    /* ---- Toast (system messages: MORPH TARGET ACQUIRED / SYSTEM READY …) ---- */
+    #toast {
+      position: absolute; bottom: 104px; left: 50%; transform: translateX(-50%);
+      z-index: var(--z-toast); pointer-events: none; opacity: 0;
+      font-family: var(--font-tech); font-size: 10px; letter-spacing: 0.26em; text-indent: 0.26em; white-space: nowrap;
+      color: var(--cyan); background: rgba(6,12,18,0.85); border: 1px solid rgba(70,230,255,0.4);
+      padding: 9px 18px; border-radius: 8px; box-shadow: 0 0 18px rgba(70,230,255,0.25);
+    }
+
+    /* ---- Help modal (system guide) ---- */
+    .modal-backdrop {
+      position: absolute; inset: 0; z-index: var(--z-modal);
+      display: grid; place-items: center; padding: 20px;
+      background: rgba(3, 5, 8, 0.7); backdrop-filter: blur(6px);
+    }
+    .modal-backdrop[hidden] { display: none; }
+    .modal {
+      width: min(560px, 100%); max-height: min(80vh, 640px); overflow-y: auto;
+      background: var(--panel-solid); border: 1px solid var(--line-bright); border-radius: var(--r-lg);
+      box-shadow: var(--shadow-float), 0 0 40px rgba(70,230,255,0.08);
+      padding: 22px 24px; position: relative;
+    }
+    .modal::before { content:""; position:absolute; top:-1px; left:-1px; width:22px; height:22px; border-top:2px solid var(--cyan); border-left:2px solid var(--cyan); border-top-left-radius: var(--r-lg); }
+    .modal h2 { margin: 0 0 2px; font-size: 14px; letter-spacing: 0.18em; font-weight: 700; }
+    .modal .sub { font-family: var(--font-tech); font-size: 10px; letter-spacing: 0.2em; color: var(--muted); margin-bottom: 16px; }
+    .guide-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .guide-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--line); border-radius: 9px; background: rgba(143,216,255,0.03); }
+    .guide-item svg { width: 18px; height: 18px; color: var(--cyan); flex-shrink: 0; margin-top: 1px; }
+    .guide-item p { margin: 0; font-size: 11.5px; line-height: 1.5; color: #c9d4dc; }
+    .guide-item p b { color: var(--text); }
+    .guide-keys { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+    .guide-keys span { font-family: var(--font-tech); font-size: 9.5px; letter-spacing: 0.08em; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+    .guide-keys b { color: var(--cyan); font-weight: 500; }
+    .modal-close { position: absolute; top: 14px; right: 14px; }
+
+    /* ---- Boot sequence overlay ---- */
+    #boot {
+      position: absolute; inset: 0; z-index: var(--z-boot); display: grid; place-items: center;
+      background: rgba(4, 6, 10, 0.92); cursor: pointer;
+    }
+    #boot[hidden] { display: none; }
+    .boot-card { text-align: left; width: min(400px, 86vw); }
+    .boot-mark { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .boot-mark .sys-mark { width: 40px; height: 40px; }
+    .boot-mark .sys-mark svg { width: 24px; height: 24px; }
+    .boot-mark strong { display: block; font-size: 15px; letter-spacing: 0.2em; }
+    .boot-mark span { display: block; font-family: var(--font-tech); font-size: 9px; letter-spacing: 0.24em; color: var(--muted); }
+    #boot-log { font-family: var(--font-tech); font-size: 10.5px; letter-spacing: 0.1em; color: var(--muted); min-height: 66px; }
+    #boot-log .ok { color: var(--ok); }
+    #boot-log .hot { color: var(--cyan); }
+    .boot-bar { height: 2px; background: rgba(143,216,255,0.12); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+    #boot-fill { height: 100%; width: 0%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
+    .boot-skip { font-family: var(--font-tech); font-size: 9px; letter-spacing: 0.2em; color: var(--faint); margin-top: 10px; }
+
+    /* ---- Accessible CSS-only tooltips ---- */
+    [data-tip] { position: relative; }
+    [data-tip]::after {
+      content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%) translateY(2px); opacity: 0; pointer-events: none;
+      font-family: var(--font-tech); font-size: 9px; letter-spacing: 0.14em; white-space: nowrap;
+      color: var(--text); background: #0b141c; border: 1px solid var(--line-bright);
+      padding: 5px 9px; border-radius: 6px; z-index: 100;
+      transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+    }
+    [data-tip]:hover::after, [data-tip]:focus-visible::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+    @media (hover: none) { [data-tip]::after { display: none; } }
+
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 1100px) {
+      .rail-stat.hide-narrow { display: none; }
+      .panel { width: 300px; }
+    }
+    @media (max-width: 900px) {
+      .rail-stat.hide-mid { display: none; }
+      .sys-title span { display: none; }
+    }
+    @media (max-width: 768px) {
+      .header { top: 8px; }
+      .rail { min-height: 48px; padding: 0 8px; }
+      .rail-sep, .rail-stat.hide-small { display: none; }
+      .stage-telemetry, .stage-corner { display: none; }
+      /* dock → bottom sheet */
+      .panel {
+        top: auto; bottom: 0; left: 0; right: 0; width: 100%;
+        max-height: 44vh; border-radius: 14px 14px 0 0;
+        border-left: 0; border-right: 0; border-bottom: 0;
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .panel.collapsed { width: 100%; }
+      .panel.collapsed .panel-scroll, .panel.collapsed .dock-tabs-row { display: none; }
+      .shape-grid { grid-template-columns: repeat(8, 148px); grid-auto-flow: column; grid-template-rows: repeat(2, auto); overflow-x: auto; overflow-y: hidden; max-height: none; }
+      .shape-card { min-height: 76px; }
+      .sensor { width: 154px; bottom: auto; top: 66px; right: 8px; }
+      #btn-show-webcam { top: 66px; bottom: auto; right: 8px; }
+      #webcam, #overlay { height: 104px; }
+      #overlay { top: 37px; }
+      .hint-bar { display: none; }
+      .stage-morph { bottom: auto; top: 66px; }
+      #toast { bottom: auto; top: 104px; }
+      .guide-grid { grid-template-columns: 1fr; }
+      .icon-btn, .btn-line { min-height: 40px; }
+      .icon-btn { min-width: 40px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+      .reticle-spin, .status-dot.live, .live-dot { animation: none !important; }
+    }
+
+    /* (sculpt-field styles live with the gesture section above) */
+
+    /* ---- Gesture sensor monitor ---- */
+
+    /* (responsive rules live in the Responsive section above) */
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js" crossorigin="anonymous"></script>
 </head>
 <body>
-  <div id="loading"><div class="loading-card"><div class="spinner"></div><h3>Preparing Lumina</h3><p>Warming up particles & camera…</p></div></div>
+  <div id="loading"><div class="loading-card"><div class="spinner"></div><h3>INITIALIZING LUMINA</h3><p>Calibrating particle matrix…</p></div></div>
   <div id="canvas-container"></div>
 
   <header class="header">
-    <div class="brand">
-      <div class="brand-mark">◈</div>
-      <div class="brand-text"><h1>Lumina</h1><p>Particle Playground • Dual Hand</p></div>
-    </div>
-    <div class="header-actions">
-      <button class="icon-btn" id="btn-grab" title="Toggle grab mode (G)">✋</button>
-      <button class="icon-btn" id="btn-hide-webcam" title="Hide camera window">👁</button>
-      <button class="icon-btn" id="btn-camera" title="Pause camera tracking">◉</button>
-      <button class="icon-btn" id="btn-help" title="Toggle help">?</button>
-      <button class="icon-btn" id="btn-fullscreen" title="Fullscreen">⛶</button>
+    <div class="rail" id="rail" role="banner" aria-label="Lumina system status and commands">
+      <div class="rail-system">
+        <span class="sys-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z"/><circle cx="12" cy="12" r="2.4"/></svg></span>
+        <div class="sys-title"><strong>LUMINA</strong><span>SPATIAL PARTICLE ENGINE</span></div>
+      </div>
+      <div class="rail-sep" aria-hidden="true"></div>
+      <div class="rail-stat hide-small"><span class="k">MORPH TARGET</span><span class="v hot" id="rail-shape">TREE</span></div>
+      <div class="rail-sep hide-mid" aria-hidden="true"></div>
+      <div class="rail-stat hide-mid"><span class="k">PARTICLE MATRIX</span><span class="v">35,000 NODES</span></div>
+      <div class="rail-sep hide-narrow" aria-hidden="true"></div>
+      <div class="rail-stat hide-narrow"><span class="k">GESTURE LINK</span><span class="v rail-link"><i class="status-dot" id="rail-link-dot"></i><span id="rail-link-label">STANDBY</span></span></div>
+      <div class="rail-sep hide-narrow" aria-hidden="true"></div>
+      <div class="rail-stat hide-narrow"><span class="k">SENSOR</span><span class="v rail-link"><i class="status-dot" id="rail-cam-dot"></i><span id="rail-cam-label">BOOT</span></span></div>
+      <div class="rail-sep" aria-hidden="true"></div>
+      <div class="rail-stat"><span class="k">RENDER</span><span class="v" id="rail-fps">— FPS</span></div>
+      <div class="rail-actions">
+        <button class="icon-btn" id="rail-panel" title="Toggle control dock (H)" aria-label="Toggle control dock" data-tip="DOCK"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg></button>
+        <button class="icon-btn" id="rail-reset" title="Reset view" aria-label="Reset view" data-tip="RESET VIEW"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+        <button class="icon-btn" id="btn-grab" title="Toggle sculpt field (G)" aria-label="Toggle sculpt field" aria-pressed="false" data-tip="SCULPT FIELD"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V6a1.5 1.5 0 0 1 3 0v5m0-6V4a1.5 1.5 0 0 1 3 0v7m0-5a1.5 1.5 0 0 1 3 0v6m0-3a1.5 1.5 0 0 1 3 0v4a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7l-2.3-3.4a1.6 1.6 0 0 1 2.5-1.9L8 13.5"/></svg></button>
+        <button class="icon-btn" id="btn-hide-webcam" title="Hide sensor monitor (V)" aria-label="Hide sensor monitor" data-tip="SENSOR VIEW"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.5 13.5 0 0 0 2 12s3 8 10 8a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg></button>
+        <button class="icon-btn" id="btn-camera" title="Pause camera tracking (C)" aria-label="Pause camera tracking" aria-pressed="true" data-tip="TRACKING"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
+        <button class="icon-btn" id="btn-help" title="System guide" aria-label="Open system guide" aria-haspopup="dialog" data-tip="GUIDE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+        <button class="icon-btn" id="btn-fullscreen" title="Fullscreen (F)" aria-label="Toggle fullscreen" data-tip="FULLSCREEN"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+      </div>
     </div>
   </header>
 
+  <!-- Central stage framing (decorative, non-interactive) -->
+  <div class="stage-ui" aria-hidden="true">
+    <span class="stage-corner tl"></span><span class="stage-corner tr"></span>
+    <span class="stage-corner bl"></span><span class="stage-corner br"></span>
+    <div class="stage-reticle" id="stage-reticle">
+      <svg viewBox="0 0 200 200" fill="none" stroke="rgba(143,216,255,0.5)" stroke-width="1">
+        <circle cx="100" cy="100" r="96" stroke-dasharray="4 8" opacity="0.7"/>
+        <g class="reticle-spin" stroke="rgba(70,230,255,0.55)">
+          <circle cx="100" cy="100" r="78" stroke-dasharray="40 26" />
+          <circle cx="100" cy="100" r="62" stroke-dasharray="2 10" opacity="0.8"/>
+        </g>
+        <path d="M100 0v12M100 188v12M0 100h12M188 100h12" stroke="rgba(70,230,255,0.8)"/>
+        <circle cx="100" cy="100" r="2.5" fill="rgba(70,230,255,0.9)" stroke="none"/>
+      </svg>
+    </div>
+    <div class="stage-scan" id="stage-scan"></div>
+    <div class="stage-morph"><span class="dim">MORPH TARGET //</span> <span id="stage-shape">TREE</span></div>
+    <div class="stage-telemetry"><span>ROT <b id="tele-rot">+0.00 / +0.00</b></span><span>FIELD <b id="tele-scale">1.00×</b></span><span>MODE <b id="tele-mode">ORBIT</b></span></div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
   <div class="panel" id="panel">
+    <div class="dock-mini" aria-hidden="true">
+      <button class="collapse-btn" id="btn-expand" title="Expand dock" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+      <span class="mini-shape" id="mini-shape"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l5 7h-3l4 6h-3l2 5H7l2-5H6l4-6H7z"/></svg></span>
+      <i class="status-dot" id="mini-link"></i>
+      <i class="status-dot" id="mini-grab"></i>
+    </div>
     <div class="panel-scroll">
       <div class="panel-header">
-        <h2>Controls</h2>
-        <button class="collapse-btn" id="btn-collapse" title="Collapse">—</button>
+        <h2>CONTROL DOCK</h2>
+        <button class="collapse-btn" id="btn-collapse" title="Collapse dock (H)" aria-label="Collapse control dock" aria-expanded="true" data-tip="COLLAPSE"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
       </div>
 
-      <div class="section">
-        <div class="section-label"><span></span> Shape</div>
-        <div class="shape-grid">
-          <div class="shape-card active" data-model="tree"><div class="icon">🎄</div><div class="name">Tree</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="saturn"><div class="icon">🪐</div><div class="name">Saturn</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="heart"><div class="icon">♥</div><div class="name">Heart</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="sphere"><div class="icon">●</div><div class="name">Sphere</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="cube"><div class="icon">⬢</div><div class="name">Cube</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="torus"><div class="icon">◎</div><div class="name">Torus</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="galaxy"><div class="icon">🌀</div><div class="name">Galaxy</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="dna"><div class="icon">🧬</div><div class="name">DNA</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="blackhole"><div class="icon">🕳️</div><div class="name">Black Hole</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="mobius"><div class="icon">➰</div><div class="name">Möbius</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="atom"><div class="icon">⚛️</div><div class="name">Atom</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="infinity"><div class="icon">♾️</div><div class="name">Infinity</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="vortex"><div class="icon">🌪️</div><div class="name">Vortex</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="butterfly"><div class="icon">🦋</div><div class="name">Butterfly</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="lotus"><div class="icon">🪷</div><div class="name">Lotus</div><div class="count">35k</div></div>
-          <div class="shape-card" data-model="firetornado"><div class="icon">🔥</div><div class="name">Fire</div><div class="count">35k</div></div>
+      <div class="dock-tabs-row">
+        <div class="dock-tabs" role="tablist" aria-label="Control sections">
+          <span class="dock-tab-ind" id="dock-tab-ind" aria-hidden="true"></span>
+          <button type="button" class="dock-tab" role="tab" id="tab-matrix" aria-selected="true" aria-controls="dock-matrix" data-tab="matrix">MATRIX</button>
+          <button type="button" class="dock-tab" role="tab" id="tab-visual" aria-selected="false" aria-controls="dock-visual" data-tab="visual" tabindex="-1">VISUAL</button>
+          <button type="button" class="dock-tab" role="tab" id="tab-control" aria-selected="false" aria-controls="dock-control" data-tab="control" tabindex="-1">CONTROL</button>
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-label"><span></span> Appearance</div>
-        <div class="color-row" style="margin-bottom:10px">
-          <div class="palette" id="palette">
-            <div class="swatch active" data-color="#00ffcc" style="background:#00ffcc"></div>
-            <div class="swatch" data-color="#7c5cff" style="background:#7c5cff"></div>
-            <div class="swatch" data-color="#ff3b82" style="background:#ff3b82"></div>
-            <div class="swatch" data-color="#ffcc00" style="background:#ffcc00"></div>
-            <div class="swatch" data-color="#38bdf8" style="background:#38bdf8"></div>
-            <div class="swatch" data-color="#ffffff" style="background:#ffffff"></div>
+      <div class="dock-panel" id="dock-matrix" role="tabpanel" aria-labelledby="tab-matrix" tabindex="0">
+        <div class="section">
+          <div class="section-label">PARTICLE MATRIX <span class="tag" id="matrix-count">16 MODELS</span></div>
+          <div class="matrix-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+            <input type="search" id="matrix-search" placeholder="FILTER MODELS…" aria-label="Filter particle models" autocomplete="off" />
           </div>
-        </div>
-        <div class="color-custom">
-          <input type="color" id="particle-color" value="#00ffcc" />
-          <span id="color-hex">#00ffcc</span>
-          <span style="margin-left:auto; font-size:11px; color:var(--muted)">Custom</span>
-        </div>
-        <div style="margin-top:14px">
-          <div class="slider-row"><span>Particle size</span><strong id="size-val">0.34</strong></div>
-          <input type="range" id="size-slider" min="0.12" max="0.9" step="0.02" value="0.34" />
-          <div class="slider-row" style="margin-top:10px"><span>Motion speed</span><strong id="speed-val">0.08</strong></div>
-          <input type="range" id="speed-slider" min="0.02" max="0.18" step="0.01" value="0.08" />
-          <div class="slider-row" style="margin-top:10px"><span>Hand smoothing</span><strong id="smooth-val">High</strong></div>
-          <input type="range" id="smooth-slider" min="0" max="2" step="1" value="2" />
-          <div style="font-size:10px; color:var(--muted); margin-top:4px; display:flex; justify-content:space-between"><span>Off</span><span>Med</span><span>High</span></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="section-label"><span></span> Hands & Motion</div>
-        <div class="status-card" id="gesture-status">
-          <div class="hand-dots" id="hand-dots">
-            <div class="dot" id="dot-0"><i></i> Hand 1 — idle</div>
-            <div class="dot" id="dot-1"><i></i> Hand 2 — idle</div>
-          </div>
-          <div class="status-text" id="status-text">Waiting for camera permission…<br><span style="color:var(--muted)">Show one or two hands to begin.</span></div>
-          <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
-          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--muted); margin-top:6px; font-family:'JetBrains Mono',monospace"><span>SMALL</span><span id="scale-label">1.00×</span><span>LARGE</span></div>
-        </div>
-        <div style="display:flex; gap:8px; margin-top:10px">
-          <button class="icon-btn" style="flex:1; width:auto; height:36px; border-radius:12px; font-size:12px; font-weight:600" id="btn-reset">↺ Reset view</button>
-          <button class="icon-btn" style="flex:1; width:auto; height:36px; border-radius:12px; font-size:12px; font-weight:600" id="btn-auto">Auto spin</button>
-        </div>
-      </div>
-
-      <div class="section" id="grab-section">
-        <div class="section-label"><span></span> Grab &amp; Sculpt</div>
-        <div class="grab-toggle-row" id="grab-toggle-row">
-          <div>
-            <div style="font-size:12px; font-weight:600;">Grab particles</div>
-            <div style="font-size:11px; color:var(--muted);">Drag to move · Hand pinch to grab</div>
-          </div>
-          <div class="toggle-switch" id="grab-toggle"></div>
-        </div>
-        <div id="grab-controls" style="opacity:0.45; pointer-events:none;">
-          <div class="grab-modes">
-            <button class="grab-mode-btn active" data-mode="attract">✋ Attract</button>
-            <button class="grab-mode-btn" data-mode="repel">💨 Repel</button>
-            <button class="grab-mode-btn" data-mode="drag">↔ Drag</button>
-          </div>
-          <div style="margin-bottom:10px">
-            <div class="slider-row"><span>Brush size</span><strong id="grab-radius-val">8.0</strong></div>
-            <input type="range" id="grab-radius" min="2" max="18" step="0.5" value="8" />
-          </div>
-          <div style="margin-bottom:10px">
-            <div class="slider-row"><span>Strength</span><strong id="grab-strength-val">0.35</strong></div>
-            <input type="range" id="grab-strength" min="0.05" max="1.0" step="0.05" value="0.35" />
-          </div>
-          <label style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--muted); margin-bottom:10px; cursor:pointer;">
-            <input type="checkbox" id="grab-hand-toggle" checked style="accent-color:var(--accent)"> Enable hand pinch grab
-          </label>
-          <div style="display:flex; gap:8px;">
-            <button class="icon-btn" style="flex:1; width:auto; height:32px; border-radius:10px; font-size:11px; font-weight:600" id="btn-grab-reset">↺ Release sculpt</button>
-            <button class="icon-btn" style="flex:1; width:auto; height:32px; border-radius:10px; font-size:11px; font-weight:600" id="btn-grab-scatter">✦ Scatter</button>
+          <div class="shape-grid" id="shape-grid" role="group" aria-label="Particle models">
+            <span id="shape-frame" aria-hidden="true"></span>
+            <button type="button" class="shape-card active" data-model="tree" aria-pressed="true"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l5 7h-3l4 6h-3l2 5H7l2-5H6l4-6H7z"/></svg></span><span class="name">Tree</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="saturn" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><ellipse cx="12" cy="12" rx="10" ry="3.6" transform="rotate(-20 12 12)"/></svg></span><span class="name">Saturn</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="heart" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20.5s-7.5-4.7-9.3-9.2C1.6 8.5 3.3 5.5 6.2 5.5c2 0 3.4 1.2 5.8 4 2.4-2.8 3.8-4 5.8-4 2.9 0 4.6 3 3.5 5.8-1.8 4.5-9.3 9.2-9.3 9.2z"/></svg></span><span class="name">Heart</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="sphere" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3.2 3.6 3.2 14.4 0 18M12 3c-3.2 3.6-3.2 14.4 0 18"/></svg></span><span class="name">Sphere</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="cube" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg></span><span class="name">Cube</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="torus" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/></svg></span><span class="name">Torus</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="galaxy" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-1.2 1-1.8 1.9-1.4 1 .4 1.2 1.8.3 2.5-1.1 1-3 .8-3.8-.5-1-1.7-.1-3.9 1.8-4.5 2.5-.8 5.2.9 5.9 3.5.8 3.3-1.7 6.5-5.1 6.9"/></svg></span><span class="name">Galaxy</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="dna" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3c0 6 10 6.5 10 12.5S7 22 7 21M17 3c0 6-10 6.5-10 12.5s10 6.5 10 5.5"/><line x1="8.5" y1="7.5" x2="15.5" y2="7.5"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8.5" y1="16.5" x2="15.5" y2="16.5"/></svg></span><span class="name">DNA</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="blackhole" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg></span><span class="name">Black Hole</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="mobius" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c4.5-1 4-14 8-14s3.5 9 8 8"/><circle cx="4" cy="19" r="1.4"/><circle cx="20" cy="13" r="1.4"/></svg></span><span class="name">Möbius</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="atom" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><ellipse cx="12" cy="12" rx="10" ry="4"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/></svg></span><span class="name">Atom</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="infinity" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.74-8z"/></svg></span><span class="name">Infinity</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="vortex" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16M6.5 8.5h11M9 13h6M10.5 17.5h3M12 21v.5"/></svg></span><span class="name">Vortex</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="butterfly" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11V4M12 11L5 5.5C3.2 8.6 5 13.5 10 14M12 11l7-5.5c1.8 3.1 0 8-5 8.5M12 11l-4.5 8c1.8 1.2 4 .4 4.5-.8M12 11l4.5 8c-1.8 1.2-4 .4-4.5-.8"/></svg></span><span class="name">Butterfly</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="lotus" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20c-5 0-8-2.8-8-6.5 2.8 0 5.8 1 8 3 2.2-2 5.2-3 8-3 0 3.7-3 6.5-8 6.5z"/><path d="M12 16.5V6M12 6c-1.6 2.2-1.6 5.2 0 7.5M12 6c1.6 2.2 1.6 5.2 0 7.5"/></svg></span><span class="name">Lotus</span><span class="count">35k</span></button>
+            <button type="button" class="shape-card" data-model="firetornado" aria-pressed="false"><span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c4.2 0 7-2.9 7-6.6 0-4.1-3-7.1-5-9.2-1 2.1-1.9 3.4-1.9 3.4S10.6 7 9.2 4.2C6.7 6.7 5 10.2 5 14.4 5 19.1 7.8 22 12 22z"/></svg></span><span class="name">Fire</span><span class="count">35k</span></button>
           </div>
         </div>
       </div>
 
-      <div class="section" id="help-section">
-        <div class="section-label"><span></span> How to interact</div>
-        <div style="font-size:12px; line-height:1.6; color:#d4d4d8; background:rgba(255,255,255,0.04); border:1px solid var(--panel-border); border-radius:12px; padding:12px">
-          <strong style="color:var(--accent)">1 hand:</strong> Move to rotate • Make a <b>fist</b> and push/pull to zoom<br>
-          <strong style="color:var(--accent-2)">2 hands:</strong> Rotate from midpoint • Spread / pinch to zoom<br>
-          <strong>Mouse:</strong> Drag to orbit • Scroll to zoom • Right-drag to pan<br>
-          <strong style="color:var(--accent)">Grab ON:</strong> Hold <b>left-drag</b> to sculpt • <b>Pinch</b> (thumb+index) to grab with hand • <b>G</b> toggle
+      <div class="dock-panel" id="dock-visual" role="tabpanel" aria-labelledby="tab-visual" tabindex="0" hidden>
+        <div class="section">
+          <div class="section-label">EMITTER COLOR</div>
+          <div class="color-row" style="margin-bottom:10px">
+            <div class="palette" id="palette" role="group" aria-label="Color presets">
+              <button type="button" class="swatch active" data-color="#00ffcc" style="background:#00ffcc" aria-label="Cyan preset"></button>
+              <button type="button" class="swatch" data-color="#7c5cff" style="background:#7c5cff" aria-label="Violet preset"></button>
+              <button type="button" class="swatch" data-color="#ff3b82" style="background:#ff3b82" aria-label="Magenta preset"></button>
+              <button type="button" class="swatch" data-color="#ffcc00" style="background:#ffcc00" aria-label="Amber preset"></button>
+              <button type="button" class="swatch" data-color="#38bdf8" style="background:#38bdf8" aria-label="Ice blue preset"></button>
+              <button type="button" class="swatch" data-color="#ffffff" style="background:#ffffff" aria-label="White preset"></button>
+            </div>
+          </div>
+          <div class="color-custom">
+            <span class="color-preview" id="color-preview" aria-hidden="true"></span>
+            <input type="color" id="particle-color" value="#00ffcc" aria-label="Custom particle color" />
+            <span id="color-hex">#00ffcc</span>
+            <span style="margin-left:auto; font-family: var(--font-tech); font-size:9px; letter-spacing: 0.2em; color:var(--faint)">CUSTOM</span>
+          </div>
+          <div class="slider-block">
+            <div class="slider-row"><span>NODE SIZE</span><strong id="size-val">0.34</strong></div>
+            <div class="slider-track"><input type="range" id="size-slider" min="0.12" max="0.9" step="0.02" value="0.34" aria-label="Particle size" /></div>
+            <div class="slider-row" style="margin-top:10px"><span>MORPH SPEED</span><strong id="speed-val">0.08</strong></div>
+            <div class="slider-track"><input type="range" id="speed-slider" min="0.02" max="0.18" step="0.01" value="0.08" aria-label="Morph speed" /></div>
+            <div class="slider-row" style="margin-top:10px"><span>SIGNAL SMOOTHING</span><strong id="smooth-val">High</strong></div>
+            <div class="slider-track"><input type="range" id="smooth-slider" min="0" max="2" step="1" value="2" aria-label="Hand smoothing" /></div>
+            <div style="font-family: var(--font-tech); font-size:9px; color:var(--faint); margin-top:2px; display:flex; justify-content:space-between"><span>OFF</span><span>MED</span><span>HIGH</span></div>
+          </div>
+          <div class="seg-row">
+            <span class="seg-label" id="autospin-label">AUTO-SPIN</span>
+            <button class="btn-line" style="flex:1; justify-content:center" id="btn-auto" aria-labelledby="autospin-label btn-auto">Auto spin</button>
+          </div>
         </div>
       </div>
+
+      <div class="dock-panel" id="dock-control" role="tabpanel" aria-labelledby="tab-control" tabindex="0" hidden>
+        <div class="section">
+          <div class="section-label">GESTURE LINK</div>
+          <div class="status-card" id="gesture-status">
+            <div class="hand-dots" id="hand-dots">
+              <div class="dot" id="dot-0"><i></i> Hand 1 — idle</div>
+              <div class="dot" id="dot-1"><i></i> Hand 2 — idle</div>
+            </div>
+            <div class="status-text" id="status-text">Waiting for camera permission…<br><span style="color:var(--muted)">Show one or two hands to begin.</span></div>
+            <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
+            <div style="display:flex; justify-content:space-between; font-family: var(--font-tech); font-size:9px; letter-spacing: 0.14em; color:var(--faint); margin-top:6px;"><span>FIELD</span><span id="scale-label">1.00×</span></div>
+          </div>
+          <div class="dock-btn-row">
+            <button class="icon-btn" id="btn-reset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span>Reset view</span></button>
+          </div>
+        </div>
+        <div class="tech-div" aria-hidden="true"></div>
+        <div class="section" id="grab-section">
+          <div class="section-label">SCULPT FIELD</div>
+          <div class="grab-toggle-row" id="grab-toggle-row">
+            <div>
+              <div class="grab-title">Grab particles</div>
+              <div class="grab-sub">Drag to move · Hand pinch to grab</div>
+            </div>
+            <button type="button" class="toggle-switch" id="grab-toggle" role="switch" aria-checked="false" aria-label="Grab particles"></button>
+          </div>
+          <div id="grab-controls" style="opacity:0.45; pointer-events:none;">
+            <div class="grab-modes" role="group" aria-label="Sculpt mode">
+              <button type="button" class="grab-mode-btn active" data-mode="attract" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h4v8a3 3 0 0 0 6 0V3h4v8a7 7 0 0 1-14 0z"/><line x1="5" y1="7" x2="9" y2="7"/><line x1="15" y1="7" x2="19" y2="7"/></svg>ATTRACT</button>
+              <button type="button" class="grab-mode-btn" data-mode="repel" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>REPEL</button>
+              <button type="button" class="grab-mode-btn" data-mode="drag" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/></svg>DRAG</button>
+            </div>
+            <div style="margin-bottom:10px">
+              <div class="slider-row"><span>BRUSH RADIUS</span><strong id="grab-radius-val">8.0</strong></div>
+              <div class="slider-track"><input type="range" id="grab-radius" min="2" max="18" step="0.5" value="8" aria-label="Brush radius" /></div>
+            </div>
+            <div style="margin-bottom:10px">
+              <div class="slider-row"><span>FIELD STRENGTH</span><strong id="grab-strength-val">0.35</strong></div>
+              <div class="slider-track"><input type="range" id="grab-strength" min="0.05" max="1.0" step="0.05" value="0.35" aria-label="Field strength" /></div>
+            </div>
+            <label class="check-line">
+              <input type="checkbox" id="grab-hand-toggle" checked> Enable hand pinch grab
+            </label>
+            <div class="dock-btn-row">
+              <button class="btn-line" style="flex:1; justify-content:center" id="btn-grab-reset">Release sculpt</button>
+              <button class="btn-line" style="flex:1; justify-content:center" id="btn-grab-scatter">Scatter</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
-  <button id="btn-show-webcam" title="Show camera window">👁 Show Camera</button>
-  <div class="webcam-wrap" id="webcam-wrap">
+  <button id="btn-show-webcam" title="Show sensor monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> SHOW SENSOR</button>
+  <div class="webcam-wrap sensor" id="webcam-wrap" role="complementary" aria-label="Gesture sensor monitor">
     <div class="webcam-header">
-      <span style="display:flex; align-items:center; gap:8px"><span class="live-dot"></span> Camera</span>
+      <span style="display:flex; align-items:center; gap:8px"><span class="live-dot" id="sensor-dot"></span> GESTURE SENSOR</span>
       <span style="display:flex; align-items:center; gap:10px">
-        <span id="cam-status" style="font-size:10px; color:var(--muted)">Starting…</span>
+        <span id="cam-status">BOOT…</span>
         <span class="webcam-controls">
-          <button class="wcam-btn" id="btn-wcam-minimize" title="Minimize">—</button>
-          <button class="wcam-btn" id="btn-wcam-hide" title="Hide window">×</button>
+          <button class="wcam-btn" id="btn-wcam-minimize" title="Minimize monitor" aria-label="Minimize sensor monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          <button class="wcam-btn" id="btn-wcam-hide" title="Hide monitor" aria-label="Hide sensor monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </span>
       </span>
     </div>
@@ -385,15 +768,49 @@
       <video id="webcam" autoplay playsinline muted></video>
       <canvas id="overlay"></canvas>
     </div>
-    <div class="webcam-footer"><span id="fps">— fps</span><span style="opacity:0.6">Mirrored</span></div>
+    <div class="webcam-footer"><span id="fps">— FPS</span><span class="hands-chip" id="sensor-hands">0 HANDS</span><span style="opacity:0.6">MIRRORED</span></div>
   </div>
 
-  <div class="hint-bar" id="hint-bar">
-    <div class="hint"><kbd>F</kbd> Fullscreen</div>
-    <div class="hint"><kbd>H</kbd> Hide panel</div>
-    <div class="hint"><kbd>C</kbd> Pause</div>
-    <div class="hint"><kbd>V</kbd> Hide cam</div>
-    <div class="hint"> <span style="color:var(--accent)">◈</span> Fist = zoom (1 hand) • Spread = zoom (2 hands)</div>
+  <div class="hint-bar" id="hint-bar" aria-hidden="true">
+    <div class="hint"><kbd>F</kbd> FULLSCREEN</div>
+    <div class="hint"><kbd>H</kbd> DOCK</div>
+    <div class="hint"><kbd>G</kbd> SCULPT</div>
+    <div class="hint"><kbd>1–3</kbd> TABS</div>
+    <div class="hint">FIST = ZOOM · SPREAD = SCALE</div>
+  </div>
+
+  <!-- System guide modal -->
+  <div class="modal-backdrop" id="help-dialog" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <button class="icon-btn modal-close" id="help-close" aria-label="Close system guide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      <h2 id="help-title">SYSTEM GUIDE</h2>
+      <div class="sub">LUMINA // SPATIAL PARTICLE ENGINE</div>
+      <div class="guide-grid">
+        <div class="guide-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V6a1.5 1.5 0 0 1 3 0v5m0-6V4a1.5 1.5 0 0 1 3 0v7m0-5a1.5 1.5 0 0 1 3 0v6m0-3a1.5 1.5 0 0 1 3 0v4a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7l-2.3-3.4a1.6 1.6 0 0 1 2.5-1.9L8 13.5"/></svg><p><b>One hand — rotate.</b> Move your open hand to steer the particle field.</p></div>
+        <div class="guide-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg><p><b>Fist — zoom.</b> Make a fist, push closer or pull away to scale the field.</p></div>
+        <div class="guide-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5M8 21H3v-5M21 3l-8 8M3 21l8-8"/></svg><p><b>Two hands — scale.</b> Spread apart to enlarge, pinch together to shrink.</p></div>
+        <div class="guide-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h4v8a3 3 0 0 0 6 0V3h4v8a7 7 0 0 1-14 0z"/></svg><p><b>Pinch — grab.</b> Touch thumb and index to sculpt particles. Modes: attract, repel, drag.</p></div>
+        <div class="guide-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="5"/><line x1="12" y1="6" x2="12" y2="9"/></svg><p><b>Mouse — orbit.</b> Drag to orbit, scroll to zoom, right-drag to pan.</p></div>
+        <div class="guide-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg><p><b>Sculpt field.</b> Enable grab, pick a mode, tune brush radius and field strength.</p></div>
+      </div>
+      <div class="guide-keys">
+        <span><b>F</b> FULLSCREEN</span><span><b>H</b> DOCK</span><span><b>G</b> SCULPT</span>
+        <span><b>C</b> TRACKING</span><span><b>V</b> SENSOR</span><span><b>1–3</b> TABS</span><span><b>ESC</b> CLOSE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boot sequence -->
+  <div id="boot" role="status" aria-label="System boot">
+    <div class="boot-card">
+      <div class="boot-mark">
+        <span class="sys-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8.5 5v10L12 22l-8.5-5V7z"/><circle cx="12" cy="12" r="2.4"/></svg></span>
+        <div><strong>LUMINA</strong><span>SPATIAL PARTICLE ENGINE</span></div>
+      </div>
+      <div id="boot-log" aria-live="polite"></div>
+      <div class="boot-bar"><div id="boot-fill"></div></div>
+      <div class="boot-skip">CLICK OR PRESS ANY KEY TO SKIP</div>
+    </div>
   </div>
 
 <script>
@@ -543,10 +960,12 @@ function updateGrabCursor(worldLocal){
 function setGrabEnabled(v){
   grabEnabled = v;
   document.getElementById('grab-toggle').classList.toggle('on', v);
+  document.getElementById('grab-toggle').setAttribute('aria-checked', v ? 'true' : 'false');
   document.getElementById('grab-toggle-row').classList.toggle('active', v);
   document.getElementById('grab-controls').style.opacity = v ? '1' : '0.45';
   document.getElementById('grab-controls').style.pointerEvents = v ? 'auto' : 'none';
   document.getElementById('btn-grab').classList.toggle('active', v);
+  document.getElementById('btn-grab').setAttribute('aria-pressed', v ? 'true' : 'false');
   if (controls) controls.enabled = ! (v && isGrabDragging);
   if (grabCursorMesh) grabCursorMesh.visible = v;
   document.body.style.cursor = v ? 'grab' : '';
@@ -953,7 +1372,7 @@ function initWebcamAndAI() {
     handLandmarksCache = landmarks; drawOverlay();
 
     // fps
-    frameCount++; const now=performance.now(); if (now-lastTime>500){ lastFps=Math.round(frameCount*1000/(now-lastTime)); document.getElementById("fps").textContent=lastFps+" fps"; frameCount=0; lastTime=now; }
+    frameCount++; const now=performance.now();     if (now-lastTime>500){ lastFps=Math.round(frameCount*1000/(now-lastTime)); document.getElementById("fps").textContent=lastFps+" FPS"; var _rf=document.getElementById("rail-fps"); if(_rf) _rf.textContent=lastFps+" FPS"; frameCount=0; lastTime=now; }
 
     if (!cameraEnabled) return;
     if (landmarks.length>0) {
@@ -1061,7 +1480,7 @@ function initWebcamAndAI() {
               // update dot to show grab
               const idx = analyses.indexOf(a);
               const dotEl = document.getElementById("dot-"+idx);
-              if (dotEl) { dotEl.className = "dot fist"; dotEl.innerHTML = `<i></i> ${a.label} — Grab ✋`; }
+              if (dotEl) { dotEl.className = "dot fist"; dotEl.innerHTML = `<i></i> ${a.label} — Pinch`; }
             }
           }
         }
@@ -1161,8 +1580,9 @@ function setupUI(){
   // shape cards
   document.querySelectorAll(".shape-card").forEach(card=>{
     card.addEventListener("click",()=>{
-      document.querySelectorAll(".shape-card").forEach(c=>c.classList.remove("active"));
-      card.classList.add("active"); currentModel=card.dataset.model;
+      document.querySelectorAll(".shape-card").forEach(c=>{ c.classList.remove("active"); c.setAttribute("aria-pressed","false"); });
+      card.classList.add("active"); card.setAttribute("aria-pressed","true"); currentModel=card.dataset.model;
+      if (window.LuminaUI) LuminaUI.onShapeSelect(card);
     });
   });
   // palette
@@ -1170,6 +1590,7 @@ function setupUI(){
   function setColor(c){
     colorHex.textContent=c; colorInput.value=c;
     document.documentElement.style.setProperty("--accent", c);
+    const preview=document.getElementById("color-preview"); if(preview) preview.style.background=c;
     if(particleSystem) particleSystem.material.color.set(c);
     document.querySelectorAll(".swatch").forEach(s=>s.classList.toggle("active", s.dataset.color.toLowerCase()===c.toLowerCase()));
   }
@@ -1195,13 +1616,18 @@ function setupUI(){
     autoSpin=!autoSpin; this.classList.toggle("active", autoSpin); this.textContent= autoSpin ? "◼ Stop" : "Auto spin";
   });
   document.getElementById("btn-collapse").addEventListener("click",()=>{
-    document.getElementById("panel").classList.toggle("collapsed");
+    if (window.LuminaUI) LuminaUI.toggleDock();
+    else document.getElementById("panel").classList.toggle("collapsed");
   });
   document.getElementById("btn-help").addEventListener("click",()=>{
-    document.getElementById("help-section").hidden = !document.getElementById("help-section").hidden;
+    if (window.LuminaUI) LuminaUI.openHelp();
+  });
+  document.getElementById("help-close").addEventListener("click",()=>{
+    if (window.LuminaUI) LuminaUI.closeHelp();
   });
   document.getElementById("btn-camera").addEventListener("click", function(){
     cameraEnabled=!cameraEnabled; this.classList.toggle("active", !cameraEnabled);
+    this.setAttribute("aria-pressed", String(cameraEnabled));
     document.getElementById("webcam-wrap").style.opacity= cameraEnabled?"1":"0.35";
     document.getElementById("cam-status").textContent= cameraEnabled?"Live • 30 fps locked":"Paused • 30 fps locked";
   });
@@ -1239,8 +1665,8 @@ function setupUI(){
   document.getElementById('btn-grab').addEventListener('click', ()=> setGrabEnabled(!grabEnabled));
   document.querySelectorAll('.grab-mode-btn').forEach(b=>{
     b.addEventListener('click', ()=>{
-      document.querySelectorAll('.grab-mode-btn').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active'); grabMode = b.dataset.mode;
+      document.querySelectorAll('.grab-mode-btn').forEach(x=>{ x.classList.remove('active'); x.setAttribute('aria-pressed','false'); });
+      b.classList.add('active'); b.setAttribute('aria-pressed','true'); grabMode = b.dataset.mode;
       if (grabCursorMesh){ grabCursorMesh.material.color.set(grabMode==='repel' ? '#ff3b82' : grabMode==='drag' ? '#7c5cff' : 0x00ffcc); }
     });
   });
@@ -1264,11 +1690,308 @@ function setupUI(){
     if(e.key.toLowerCase()==="c") document.getElementById("btn-camera").click();
     if(e.key.toLowerCase()==="v") document.getElementById("btn-hide-webcam").click();
     if(e.key.toLowerCase()==="g") setGrabEnabled(!grabEnabled);
+    if(e.key>="1" && e.key<="3" && window.LuminaUI && !/^(INPUT|TEXTAREA)$/.test(e.target.tagName)){ LuminaUI.selectTab(["matrix","visual","control"][+e.key-1]); }
+    if(e.key==="Escape" && window.LuminaUI){ LuminaUI.closeHelp(); }
     if(e.key==="Escape" && grabEnabled && isGrabDragging){ isGrabDragging=false; if(controls) controls.enabled=true; }
   });
 }
 
 window.addEventListener("DOMContentLoaded",()=>{ initThree(); setupUI(); animate(); initWebcamAndAI(); });
+</script>
+<script>
+/* ============ LUMINA UI — interface motion + reactive states (Anime.js, guarded) ============
+   Three.js render loop and MediaPipe logic above are untouched. Everything here is
+   interface-only, runs on events/intervals, and degrades gracefully without Anime.js. */
+window.LuminaUI = (function(){
+  "use strict";
+  function $(id){ return document.getElementById(id); }
+  var hasAnime = (typeof window.anime !== "undefined");
+  var reduced = (typeof window.matchMedia === "function") && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function animOK(){ return hasAnime && !reduced; }
+  function stopEl(el){ if (hasAnime && el) window.anime.remove(el); }
+
+  /* ---------- Toast ---------- */
+  var toastTimer = null;
+  function showToast(msg){
+    var t = $("toast"); if (!t) return;
+    stopEl(t); if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+    t.textContent = msg;
+    if (!animOK()) { t.style.opacity = "1"; toastTimer = setTimeout(function(){ t.style.opacity = "0"; }, 1500); return; }
+    window.anime({ targets: t, opacity: [0, 1], translateX: ["-50%", "-50%"], translateY: [8, 0], duration: 220, easing: "easeOutCubic" });
+    toastTimer = setTimeout(function(){
+      window.anime({ targets: t, opacity: 0, translateY: -6, duration: 260, easing: "easeInCubic" });
+    }, 1500);
+  }
+
+  /* ---------- Tabs (segmented control, sliding indicator) ---------- */
+  var TAB_ORDER = ["matrix", "visual", "control"];
+  var activeTab = "matrix";
+  function tabEls(){ return TAB_ORDER.map(function(n){ return $("tab-" + n); }); }
+  function moveIndicator(instant){
+    var ind = $("dock-tab-ind"); if (!ind) return;
+    var btn = $("tab-" + activeTab); if (!btn) return;
+    var x = btn.offsetLeft, w = btn.offsetWidth;
+    stopEl(ind);
+    if (instant || !animOK()) { ind.style.transform = "translateX(" + x + "px)"; ind.style.width = w + "px"; return; }
+    window.anime({ targets: ind, translateX: x, width: w, duration: 280, easing: "easeOutQuint" });
+  }
+  function selectTab(name, focusTab){
+    if (TAB_ORDER.indexOf(name) < 0) return;
+    activeTab = name;
+    tabEls().forEach(function(b){
+      var on = (b.dataset.tab === name);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+      b.tabIndex = on ? 0 : -1;
+      if (on && focusTab) b.focus();
+    });
+    TAB_ORDER.forEach(function(n){ var p = $("dock-" + n); if (p) p.hidden = (n !== name); });
+    try { sessionStorage.setItem("lumina-tab", name); } catch (e) {}
+    moveIndicator(false);
+    if (name === "matrix") moveFrame(null, true); // re-seat frame when panel reappears
+  }
+  function initTabs(){
+    tabEls().forEach(function(b){
+      b.addEventListener("click", function(){ selectTab(b.dataset.tab, false); });
+      b.addEventListener("keydown", function(e){
+        var i = TAB_ORDER.indexOf(b.dataset.tab), j = -1;
+        if (e.key === "ArrowRight") j = (i + 1) % 3;
+        else if (e.key === "ArrowLeft") j = (i + 2) % 3;
+        else if (e.key === "Home") j = 0;
+        else if (e.key === "End") j = 2;
+        if (j >= 0) { e.preventDefault(); selectTab(TAB_ORDER[j], true); }
+      });
+    });
+    var saved = null;
+    try { saved = sessionStorage.getItem("lumina-tab"); } catch (e) {}
+    if (TAB_ORDER.indexOf(saved) >= 0) activeTab = saved;
+    selectTab(activeTab, false);
+  }
+
+  /* ---------- Shape selection frame + scan + stage label ---------- */
+  function activeCard(){ return document.querySelector(".shape-card.active"); }
+  function moveFrame(card, instant){
+    var frame = $("shape-frame"), grid = $("shape-grid");
+    if (!frame || !grid) return;
+    card = card || activeCard(); if (!card) { frame.style.opacity = "0"; return; }
+    var g = grid.getBoundingClientRect(), r = card.getBoundingClientRect();
+    var x = r.left - g.left + grid.scrollLeft - 2, y = r.top - g.top + grid.scrollTop - 2;
+    var w = r.width + 4, h = r.height + 4;
+    stopEl(frame);
+    frame.style.opacity = "1";
+    if (instant || !animOK()) {
+      frame.style.left = x + "px"; frame.style.top = y + "px";
+      frame.style.width = w + "px"; frame.style.height = h + "px"; return;
+    }
+    window.anime({ targets: frame, left: x, top: y, width: w, height: h, duration: 300, easing: "easeOutQuint" });
+  }
+  function playScan(){
+    var s = $("stage-scan"); if (!s) return;
+    stopEl(s);
+    if (!animOK()) return;
+    window.anime({ targets: s, opacity: [0, 1, 0], translateY: [-46, 0, 46], duration: 480, easing: "easeInOutCubic" });
+  }
+  function setShapeLabels(model){
+    var label = String(model || "tree").toUpperCase();
+    var rs = $("rail-shape"); if (rs) rs.textContent = label;
+    var ss = $("stage-shape"); if (ss) ss.textContent = label;
+  }
+  function onShapeSelect(card){
+    setShapeLabels(card.dataset.model);
+    moveFrame(card, false);
+    playScan();
+    var mini = $("mini-shape"), icon = card.querySelector(".icon");
+    if (mini && icon) mini.innerHTML = icon.innerHTML;
+    var nm = card.querySelector(".name");
+    showToast("MORPH TARGET ACQUIRED // " + (nm ? nm.textContent.toUpperCase() : card.dataset.model.toUpperCase()));
+  }
+
+  /* ---------- Matrix search/filter ---------- */
+  function initSearch(){
+    var input = $("matrix-search"); if (!input) return;
+    input.addEventListener("input", function(){
+      var q = input.value.trim().toLowerCase(), n = 0;
+      document.querySelectorAll(".shape-card").forEach(function(c){
+        var hit = !q || (c.querySelector(".name").textContent.toLowerCase().indexOf(q) >= 0);
+        c.style.display = hit ? "" : "none"; if (hit) n++;
+      });
+      var mc = $("matrix-count"); if (mc) mc.textContent = n + " / 16 MODELS";
+      moveFrame(null, true);
+    });
+  }
+
+  /* ---------- Dock collapse ---------- */
+  function toggleDock(){
+    var panel = $("panel"); if (!panel) return;
+    var body = panel.querySelector(".panel-scroll");
+    var willCollapse = !panel.classList.contains("collapsed");
+    var done = function(){
+      panel.classList.toggle("collapsed", willCollapse);
+      var cb = $("btn-collapse"); if (cb) cb.setAttribute("aria-expanded", willCollapse ? "false" : "true");
+      moveFrame(null, true); moveIndicator(true);
+    };
+    if (!animOK() || !body) { done(); return; }
+    stopEl(body);
+    if (willCollapse) {
+      window.anime({ targets: body, opacity: 0, translateX: -14, duration: 160, easing: "easeInCubic", complete: function(){
+        done(); body.style.opacity = ""; body.style.transform = "";
+      }});
+    } else {
+      done();
+      window.anime({ targets: body, opacity: [0, 1], translateX: [-14, 0], duration: 280, easing: "easeOutCubic" });
+    }
+  }
+
+  /* ---------- Help modal (focus trap, Esc, restore) ---------- */
+  var lastFocus = null;
+  function openHelp(){
+    var dlg = $("help-dialog"); if (!dlg || !dlg.hidden) return;
+    lastFocus = document.activeElement;
+    dlg.hidden = false;
+    var box = dlg.querySelector(".modal");
+    if (animOK() && box) { stopEl(box); window.anime({ targets: box, opacity: [0, 1], translateY: [14, 0], scale: [0.98, 1], duration: 280, easing: "easeOutCubic" }); }
+    var c = $("help-close"); if (c) c.focus();
+  }
+  function closeHelp(){
+    var dlg = $("help-dialog"); if (!dlg || dlg.hidden) return;
+    var finish = function(){ dlg.hidden = true; if (lastFocus && lastFocus.focus) lastFocus.focus(); };
+    var box = dlg.querySelector(".modal");
+    if (animOK() && box) { stopEl(box); window.anime({ targets: box, opacity: 0, translateY: 10, duration: 200, easing: "easeInCubic", complete: finish }); }
+    else finish();
+  }
+  function initModal(){
+    var dlg = $("help-dialog"); if (!dlg) return;
+    dlg.addEventListener("mousedown", function(e){ if (e.target === dlg) closeHelp(); });
+    dlg.addEventListener("keydown", function(e){
+      if (e.key === "Escape") { e.stopPropagation(); closeHelp(); return; }
+      if (e.key !== "Tab") return;
+      var f = dlg.querySelectorAll("button, [href], input, [tabindex]:not([tabindex='-1'])");
+      f = Array.prototype.filter.call(f, function(el){ return !el.disabled && el.offsetParent !== null; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
+
+  /* ---------- Boot sequence (skippable, ~2s, never blocks readiness) ---------- */
+  var bootDone = false;
+  function finishBoot(instant){
+    if (bootDone) return; bootDone = true;
+    var b = $("boot"); if (!b) return;
+    var hide = function(){ b.hidden = true; showToast("SYSTEM READY"); };
+    if (instant || !animOK()) { hide(); return; }
+    stopEl(b);
+    window.anime({ targets: b, opacity: 0, duration: 320, easing: "easeOutCubic", complete: hide });
+  }
+  function initBoot(){
+    var b = $("boot"), log = $("boot-log"), fill = $("boot-fill");
+    if (!b) { bootDone = true; return; }
+    if (reduced) { finishBoot(true); return; }
+    var lines = [
+      '<span class="ok">▸</span> LUMINA KERNEL … <span class="ok">ONLINE</span>',
+      '<span class="ok">▸</span> PARTICLE MATRIX … <span class="hot">35,000 NODES</span>',
+      '<span class="ok">▸</span> GESTURE LINK … STANDBY',
+      '<span class="ok">▸</span> RENDER CORE … READY'
+    ];
+    var skip = function(){ finishBoot(false); };
+    b.addEventListener("pointerdown", skip);
+    window.addEventListener("keydown", skip, { once: true });
+    if (log) {
+      lines.forEach(function(html, i){
+        setTimeout(function(){ if (!bootDone && $(("boot-log"))) $("boot-log").innerHTML += (i ? "<br>" : "") + html; }, 180 + i * 320);
+      });
+    }
+    if (hasAnime && fill && !reduced) {
+      window.anime({ targets: fill, width: "100%", duration: 1650, easing: "easeInOutCubic" });
+    } else if (fill) { fill.style.width = "100%"; }
+    setTimeout(function(){ finishBoot(false); }, 2050);
+    // entrance for rail + dock (interface motion only)
+    if (animOK()) {
+      var rail = $("rail"), panel = $("panel");
+      if (rail) window.anime({ targets: rail, opacity: [0, 1], translateY: [-12, 0], duration: 450, delay: 500, easing: "easeOutCubic" });
+      if (panel) window.anime({ targets: panel, opacity: [0, 1], translateX: [-16, 0], duration: 450, delay: 650, easing: "easeOutCubic" });
+    }
+  }
+
+  /* ---------- Rail proxies ---------- */
+  function clickId(id){ var el = $(id); if (el) el.click(); }
+  function initProxies(){
+    var r1 = $("rail-reset"); if (r1) r1.addEventListener("click", function(){ clickId("btn-reset"); showToast("VIEW RESET"); });
+    var r2 = $("rail-panel"); if (r2) r2.addEventListener("click", function(){ clickId("btn-collapse"); });
+    var r3 = $("rail-cam"); if (r3) r3.addEventListener("click", function(){ clickId("btn-camera"); });
+    var ex = $("btn-expand"); if (ex) ex.addEventListener("click", function(){ clickId("btn-collapse"); });
+  }
+
+  /* ---------- Reactive state poll (500ms — no render-loop DOM work) ---------- */
+  function setDot(el, cls){ if (el) el.className = "status-dot " + cls; }
+  function poll(){
+    try {
+      var d0 = $("dot-0"), d1 = $("dot-1");
+      var c0 = d0 ? d0.className : "", c1 = d1 ? d1.className : "";
+      var t0 = d0 ? d0.textContent : "", t1 = d1 ? d1.textContent : "";
+      var hands = ((c0.indexOf(" on") >= 0 || c0.indexOf("fist") >= 0) ? 1 : 0) + ((c1.indexOf(" on") >= 0 || c1.indexOf("fist") >= 0) ? 1 : 0);
+      var grabbing = (t0 + t1).indexOf("Grab") >= 0;
+      var fisting = c0.indexOf("fist") >= 0 || c1.indexOf("fist") >= 0;
+      var st = $("status-text"); var stx = st ? st.textContent : "";
+      var camPaused = (typeof cameraEnabled !== "undefined") && !cameraEnabled;
+      var linkLabel = $("rail-link-label");
+      var linkState = "idle", linkText = "STANDBY";
+      if (grabbing) { linkState = "live"; linkText = "PINCH // SCULPT"; }
+      else if (hands >= 2) { linkState = "live"; linkText = "DUAL LINK"; }
+      else if (hands === 1 && fisting) { linkState = "live"; linkText = "FIST // ZOOM"; }
+      else if (hands === 1) { linkState = "live"; linkText = "TRACKING LOCKED"; }
+      else if (camPaused) { linkState = ""; linkText = "LINK HELD"; }
+      else if (stx.indexOf("No hand") >= 0) { linkState = "warn"; linkText = "SIGNAL LOST"; }
+      else if (stx.indexOf("Camera failed") >= 0 || stx.indexOf("failed to load") >= 0) { linkState = "err"; linkText = "SENSOR FAULT"; }
+      if (linkLabel) linkLabel.textContent = linkText;
+      setDot($("rail-link-dot"), linkState);
+      setDot($("mini-link"), linkState);
+      // sensor
+      var cs = $("cam-status"); var csx = cs ? cs.textContent : "";
+      var camLabel = $("rail-cam-label"), camState = "", camText = "BOOT";
+      if (/Live/.test(csx)) { camState = "live"; camText = "LOCKED"; }
+      else if (/Paused/.test(csx)) { camState = "warn"; camText = "HELD"; }
+      else if (/Blocked/.test(csx)) { camState = "err"; camText = "DENIED"; }
+      else if (/No hands/.test(csx)) { camState = ""; camText = "IDLE"; }
+      if (camLabel) camLabel.textContent = camText;
+      setDot($("rail-cam-dot"), camState);
+      var sh = $("sensor-hands"); if (sh) { sh.textContent = hands + (hands === 1 ? " HAND" : " HANDS"); }
+      // telemetry
+      var grab = (typeof grabEnabled !== "undefined") && grabEnabled;
+      var spin = (typeof autoSpin !== "undefined") && autoSpin;
+      var mode = grab ? ("SCULPT " + String(typeof grabMode !== "undefined" ? grabMode : "").toUpperCase()) : (spin ? "SPIN" : "ORBIT");
+      var tm = $("tele-mode"); if (tm) tm.textContent = mode;
+      var sl = $("scale-label"); var ts = $("tele-scale"); if (sl && ts) ts.textContent = sl.textContent;
+      if (typeof particleSystem !== "undefined" && particleSystem) {
+        var tr = $("tele-rot");
+        if (tr) tr.textContent = (particleSystem.rotation.x >= 0 ? "+" : "") + particleSystem.rotation.x.toFixed(2) + " / " + (particleSystem.rotation.y >= 0 ? "+" : "") + particleSystem.rotation.y.toFixed(2);
+      }
+      setDot($("mini-grab"), grab ? "live" : "");
+      // shape labels (backup sync)
+      if (typeof currentModel !== "undefined") setShapeLabels(currentModel);
+    } catch (e) { /* poll must never break the app */ }
+  }
+
+  /* ---------- Resize (debounced) ---------- */
+  var rzT = null;
+  function initResize(){
+    window.addEventListener("resize", function(){
+      if (rzT) clearTimeout(rzT);
+      rzT = setTimeout(function(){ moveIndicator(true); moveFrame(null, true); }, 200);
+    });
+    window.addEventListener("load", function(){ moveIndicator(true); moveFrame(null, true); });
+  }
+
+  function init(){
+    initTabs(); initSearch(); initModal(); initProxies(); initResize(); initBoot();
+    requestAnimationFrame(function(){ moveIndicator(true); moveFrame(null, true); });
+    setInterval(poll, 500);
+    poll();
+  }
+  return { init: init, selectTab: selectTab, toggleDock: toggleDock, openHelp: openHelp, closeHelp: closeHelp, onShapeSelect: onShapeSelect, toast: showToast };
+})();
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", function(){ window.LuminaUI.init(); });
+else window.LuminaUI.init();
 </script>
 </body>
 </html>

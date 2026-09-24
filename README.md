@@ -8,6 +8,14 @@ An interactive 3D particle playground controlled with hand gestures, mouse input
 
 Allow camera access to use gesture controls. A desktop browser is recommended for the complete experience.
 
+## Preview
+
+[![Lumina desktop command interface](docs/screenshots/lumina-desktop.png)](https://particle-interaction-pi.vercel.app/)
+
+<p align="center">
+  <img src="docs/screenshots/lumina-mobile.png" alt="Lumina mobile particle interface" width="320">
+</p>
+
 ## Highlights
 
 - **35,000 real-time particles** with smooth transitions between models.
@@ -104,6 +112,8 @@ The required browser libraries and fonts are loaded from CDNs, so an internet co
 ├── favicon.png
 ├── favicon-192.png
 ├── favicon-512.png
+├── docs/
+│   └── screenshots/                     # Desktop and mobile README previews
 └── README.md
 ```
 

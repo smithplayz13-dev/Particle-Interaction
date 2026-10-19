@@ -14,7 +14,7 @@ The two HTML pages now have different jobs:
 
 | Page | Role |
 | --- | --- |
-| `index.html` | The **landing page**: a kinetic, scroll-driven introduction to Lumina with 10 animated sections, a model showcase, gesture and sculpt demonstrations, and CTAs that open the playground. Built with Anime.js v4. |
+| `index.html` | The **landing page**: a six-scene spatial journey (Awakening, Morph corridor, Hand encounter, Matter lab, Machine anatomy, Portal) around one persistent particle organism, with CTAs that open the playground. Built with GSAP 3.12.5 and ScrollTrigger. |
 | `Particle_Interaction_Dual_Hands.html` | The **interactive playground**: the complete, self-contained particle application with hand tracking, mouse controls, sculpt tools, and visual settings. |
 
 The landing page does not duplicate the playground. Every "Launch Playground" button and screenshot link on it opens `Particle_Interaction_Dual_Hands.html`, which remains unchanged and feature-complete.
@@ -107,15 +107,15 @@ Playground shortcuts:
 
 ## Landing page
 
-`index.html` is a kinetic, editorial launch page for the playground. It includes:
+`index.html` is a six-scene spatial journey around one persistent particle organism. It includes:
 
-- A hero with a live particle-core canvas, radial measurement rings, and coordinated character entrances.
-- A pinned particle manifesto (35,000 particles, 16 forms, 2 hands, zero limits) driven by scroll.
-- A pinned horizontal showcase of all 16 models, replaced by a vertical card flow on small screens.
-- A gesture laboratory, a sticky three-mode sculpt field, and an interactive visual calibration preview.
-- Real code excerpts from the playground source, a dependency graph, and an honest performance field.
-- An interface reveal built from the real desktop and mobile screenshots, and a final launch sequence.
-- Progressive enhancement: the page stays fully readable, navigable, and clickable if the Anime.js CDN fails or if `prefers-reduced-motion` is set. Pinned scenes become normal static sections in both cases.
+- An asymmetric awakening with a live organism canvas and masked headline entrance.
+- A pinned morph corridor cycling representative forms with a sixteen-name orbit map instead of cards.
+- A hand-encounter scene with a 21-landmark field, scroll-driven open, close, spread, and pinch states.
+- A matter lab combining attract, repel, and drag modes with color, size, morph speed, smoothing, and rotation controls on one membrane.
+- Real code excerpts from the playground source as floating anatomy layers, plus honest performance facts.
+- A portal reveal built from the real desktop and mobile screenshots, and a final launch target.
+- Progressive enhancement: the page stays fully readable, navigable, and clickable if the GSAP CDN fails or if `prefers-reduced-motion` is set. Pinned scenes become normal static sections in both cases.
 
 ## Run locally
 
@@ -144,7 +144,7 @@ Playground (`Particle_Interaction_Dual_Hands.html`):
 
 Landing page (`index.html`):
 
-- [Anime.js](https://animejs.com/) v4 (pinned `4.5.0` via jsDelivr) for scroll choreography, timelines, staggering, SVG drawing, motion paths, and draggable interactions. The v3 copy used by the playground is untouched.
+- [GSAP](https://gsap.com/) `3.12.5` with ScrollTrigger (both pinned via cdnjs) for the scroll narrative, timelines, SVG drawing, and portal choreography. The playground's Anime.js v3 copy is untouched.
 
 Both pages are vanilla HTML, CSS, and JavaScript with no build system. Libraries and fonts load from CDNs, so an internet connection is needed when running the project locally.
 
@@ -152,7 +152,7 @@ Both pages are vanilla HTML, CSS, and JavaScript with no build system. Libraries
 
 ```text
 .
-├── index.html                           # Kinetic landing page (Anime.js v4)
+├── index.html                           # Spatial landing page (GSAP 3.12.5 + ScrollTrigger)
 ├── Particle_Interaction_Dual_Hands.html # Interactive playground (self-contained)
 ├── favicon.ico
 ├── favicon.svg

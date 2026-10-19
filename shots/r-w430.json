@@ -1,0 +1,43 @@
+{
+ "label": "w430",
+ "rm": false,
+ "noanime": false,
+ "warnStacks": [],
+ "registries": {
+  "rT": 52,
+  "rO": 0,
+  "rS": 4,
+  "pending": 126,
+  "mode": "small"
+ },
+ "title": "Lumina · Shape Light. Move Matter. | 35,000-Particle Hand-Controlled 3D Playground",
+ "lxAnim": true,
+ "lxRm": false,
+ "stats": {
+  "sequences": 146,
+  "targets": 119,
+  "scenes": 12
+ },
+ "responsiveMode": "small",
+ "hOverflow": 0,
+ "bodyScrollH": 17181,
+ "sections": 11,
+ "playgroundLinks": 7,
+ "animeLoaded": true,
+ "activeAnims": "n/a",
+ "dpr": 1,
+ "focusPath": [
+  "skip",
+  "brand",
+  "nav-cta",
+  "nav-burger",
+  "btn btn-primary",
+  "btn btn-ghost",
+  "mode-tab",
+  "mode-tab"
+ ],
+ "postScrollOverflow": 0,
+ "stickyOverlap": 0,
+ "screenshot": "shots/lx-w430.png",
+ "consoleIssues": []
+}

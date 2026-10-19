@@ -1,0 +1,33 @@
+{
+ "label": "w390",
+ "rm": false,
+ "noanime": false,
+ "warnStacks": [],
+ "registries": null,
+ "title": "Lumina · Shape Light. Move Matter. | 35,000-Particle Hand-Controlled 3D Playground",
+ "lxAnim": false,
+ "lxRm": false,
+ "stats": null,
+ "responsiveMode": "n/a",
+ "hOverflow": 0,
+ "bodyScrollH": 17341,
+ "sections": 11,
+ "playgroundLinks": 7,
+ "animeLoaded": false,
+ "activeAnims": "n/a",
+ "dpr": 1,
+ "focusPath": [
+  "skip",
+  "brand",
+  "nav-cta",
+  "nav-burger",
+  "btn btn-primary",
+  "btn btn-ghost",
+  "mode-tab",
+  "mode-tab"
+ ],
+ "postScrollOverflow": 0,
+ "stickyOverlap": 0,
+ "screenshot": "shots/lx-w390.png",
+ "consoleIssues": []
+}

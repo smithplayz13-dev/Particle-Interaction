@@ -1,0 +1,31 @@
+{
+ "label": "desk-noanime",
+ "rm": false,
+ "noanime": true,
+ "warnStacks": [],
+ "registries": {
+  "rT": 0,
+  "rO": 0,
+  "rS": 0,
+  "pending": 0,
+  "mode": ""
+ },
+ "title": "Lumina · Shape Light. Move Matter. | 35,000-Particle Hand-Controlled 3D Playground",
+ "lxAnim": false,
+ "lxRm": true,
+ "stats": {
+  "sequences": 0,
+  "targets": 0,
+  "scenes": 0
+ },
+ "responsiveMode": "",
+ "hOverflow": 0,
+ "bodyScrollH": 15591,
+ "sections": 11,
+ "playgroundLinks": 7,
+ "animeLoaded": false,
+ "activeAnims": "n/a",
+ "dpr": 1,
+ "screenshot": "shots/lx-desk-noanime.png",
+ "consoleIssues": []
+}
